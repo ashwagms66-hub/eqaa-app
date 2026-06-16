@@ -23,7 +23,11 @@ export const DEFAULT_CYCLE_LENGTH = 28;
 export const DEFAULT_PERIOD_LENGTH = 5;
 
 export function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  // Use local getters — toISOString() is UTC and causes off-by-one in UTC+ near midnight
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export function isSameDay(a: Date, b: Date): boolean {
@@ -57,13 +61,18 @@ export function generateCyclePrediction(
 
 export function isPeriodDay(
   date: Date,
-  nextPeriodStart: Date,
+  periodStart: Date,
   periodLength: number = DEFAULT_PERIOD_LENGTH
 ): boolean {
-  const start = new Date(formatDate(nextPeriodStart));
-  const end = addDays(start, periodLength - 1);
-
-  return date >= start && date <= end;
+  // String comparison avoids UTC-vs-local midnight mismatches
+  const dateStr = formatDate(date);
+  const startStr = formatDate(periodStart);
+  const endDate = new Date(
+    periodStart.getFullYear(),
+    periodStart.getMonth(),
+    periodStart.getDate() + periodLength - 1
+  );
+  return dateStr >= startStr && dateStr <= formatDate(endDate);
 }
 
 export function isFertileDay(
@@ -71,7 +80,8 @@ export function isFertileDay(
   fertileStart: Date,
   fertileEnd: Date
 ): boolean {
-  return date >= fertileStart && date <= fertileEnd;
+  const dateStr = formatDate(date);
+  return dateStr >= formatDate(fertileStart) && dateStr <= formatDate(fertileEnd);
 }
 
 export function isOvulationDay(
@@ -128,11 +138,9 @@ export function generateMonthCalendar(
       dayNumber: day,
       isToday: isSameDay(date, today),
       isCurrentMonth: true,
-      isPeriod: isPeriodDay(
-        date,
-        prediction.nextPeriodStart,
-        periodLength
-      ),
+      isPeriod:
+        isPeriodDay(date, lastPeriodStart, periodLength) ||
+        isPeriodDay(date, prediction.nextPeriodStart, periodLength),
       isFertile: isFertileDay(
         date,
         prediction.fertileStart,

@@ -42,6 +42,25 @@ import {
 
 import { ArrowLeft } from "lucide-react-native";
 
+type Ingredient = {
+  emoji: string;
+  nameAr: string;
+  nameEn: string;
+  grams: string;
+};
+
+function computeKcal(macros: string[]): number {
+  let p = 0, c = 0, f = 0;
+  macros.forEach((m) => {
+    const n = parseInt(m, 10);
+    if (isNaN(n)) return;
+    if (/بروتين|Protein/.test(m)) p = n;
+    else if (/كارب|Carbs/.test(m)) c = n;
+    else if (/دهون|Fat/.test(m)) f = n;
+  });
+  return Math.round((p * 4 + c * 4 + f * 9) / 10) * 10;
+}
+
 export default function NutritionScreen() {
     const { language } =
     useLanguage();
@@ -137,10 +156,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة دعم واحتواء"
             : "Supportive Nourishing Meal",
-        meal:
-          language === "ar"
-            ? "160g سلمون + 140g أرز + 80g خضار + 15g زيت زيتون"
-            : "160g salmon + 140g rice + 80g vegetables + 15g olive oil",
+        ingredients: [
+          { emoji: "🐟", nameAr: "سلمون مشوي",     nameEn: "Grilled Salmon",   grams: "160g" },
+          { emoji: "🌾", nameAr: "أرز مطبوخ",       nameEn: "Cooked Rice",      grams: "140g" },
+          { emoji: "🥦", nameAr: "خضار متنوعة",     nameEn: "Vegetables",       grams: "80g"  },
+          { emoji: "🫒", nameAr: "زيت زيتون",       nameEn: "Olive Oil",        grams: "15g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -179,10 +200,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة التعافي"
             : "Recovery Meal",
-        meal:
-          language === "ar"
-            ? "150g دجاج + 120g بطاطس + 90g خضار + 10g زيت زيتون"
-            : "150g chicken + 120g potatoes + 90g vegetables + 10g olive oil",
+        ingredients: [
+          { emoji: "🍗", nameAr: "دجاج مشوي",      nameEn: "Grilled Chicken",  grams: "150g" },
+          { emoji: "🥔", nameAr: "بطاطس مطبوخة",   nameEn: "Cooked Potatoes",  grams: "120g" },
+          { emoji: "🥦", nameAr: "خضار متنوعة",     nameEn: "Vegetables",       grams: "90g"  },
+          { emoji: "🫒", nameAr: "زيت زيتون",       nameEn: "Olive Oil",        grams: "10g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -221,10 +244,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة القمر"
             : "Moon Meal",
-        meal:
-          language === "ar"
-            ? "140g سمك + 110g أرز + 90g خضار + شاي دافئ"
-            : "140g fish + 110g rice + 90g vegetables + warm tea",
+        ingredients: [
+          { emoji: "🐟", nameAr: "سمك خفيف",       nameEn: "Light Fish",       grams: "140g" },
+          { emoji: "🌾", nameAr: "أرز مطبوخ",       nameEn: "Cooked Rice",      grams: "110g" },
+          { emoji: "🥦", nameAr: "خضار متنوعة",     nameEn: "Vegetables",       grams: "90g"  },
+          { emoji: "🫖", nameAr: "شاي أعشاب دافئ",  nameEn: "Warm Herbal Tea",  grams: ""     },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -263,10 +288,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة التوازن"
             : "Balanced Meal",
-        meal:
-          language === "ar"
-            ? "160g دجاج + 90g أرز + 120g خضار + 15g أفوكادو"
-            : "160g chicken + 90g rice + 120g vegetables + 15g avocado",
+        ingredients: [
+          { emoji: "🍗", nameAr: "دجاج مشوي",      nameEn: "Grilled Chicken",  grams: "160g" },
+          { emoji: "🌾", nameAr: "أرز مطبوخ",       nameEn: "Cooked Rice",      grams: "90g"  },
+          { emoji: "🥦", nameAr: "خضار متنوعة",     nameEn: "Vegetables",       grams: "120g" },
+          { emoji: "🥑", nameAr: "أفوكادو",          nameEn: "Avocado",          grams: "15g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -305,10 +332,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة دعم للطاقة"
             : "Energy Support Meal",
-        meal:
-          language === "ar"
-            ? "150g دجاج مشوي + 120g أرز مطبوخ + 80g خضار + 10g زيت زيتون"
-            : "150g grilled chicken + 120g cooked rice + 80g vegetables + 10g olive oil",
+        ingredients: [
+          { emoji: "🍗", nameAr: "دجاج مشوي",      nameEn: "Grilled Chicken",  grams: "150g" },
+          { emoji: "🌾", nameAr: "أرز مطبوخ",       nameEn: "Cooked Rice",      grams: "120g" },
+          { emoji: "🥦", nameAr: "خضار طازجة",      nameEn: "Fresh Vegetables", grams: "80g"  },
+          { emoji: "🫒", nameAr: "زيت زيتون",       nameEn: "Olive Oil",        grams: "10g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -346,10 +375,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة توازن"
             : "Balanced Meal",
-        meal:
-          language === "ar"
-            ? "140g دجاج + 110g مكرونة + 90g خضار + 12g زيت زيتون"
-            : "140g chicken + 110g pasta + 90g vegetables + 12g olive oil",
+        ingredients: [
+          { emoji: "🍗", nameAr: "دجاج مشوي",      nameEn: "Grilled Chicken",  grams: "140g" },
+          { emoji: "🍝", nameAr: "مكرونة مطبوخة",   nameEn: "Cooked Pasta",     grams: "110g" },
+          { emoji: "🥦", nameAr: "خضار متنوعة",     nameEn: "Vegetables",       grams: "90g"  },
+          { emoji: "🫒", nameAr: "زيت زيتون",       nameEn: "Olive Oil",        grams: "12g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -387,10 +418,12 @@ export default function NutritionScreen() {
           language === "ar"
             ? "وجبة دعم التركيز"
             : "Focus Support Meal",
-        meal:
-          language === "ar"
-            ? "160g لحم + 130g بطاطس + 70g خضار + 10g زيت زيتون"
-            : "160g beef + 130g potatoes + 70g vegetables + 10g olive oil",
+        ingredients: [
+          { emoji: "🥩", nameAr: "لحم مشوي",       nameEn: "Grilled Beef",     grams: "130g" },
+          { emoji: "🥔", nameAr: "بطاطس مشوية",    nameEn: "Roasted Potatoes", grams: "160g" },
+          { emoji: "🥗", nameAr: "خضار مشكلة",     nameEn: "Mixed Vegetables", grams: "70g"  },
+          { emoji: "🫒", nameAr: "زيت زيتون",       nameEn: "Olive Oil",        grams: "10g"  },
+        ] as Ingredient[],
         macros:
           language === "ar"
             ? [
@@ -427,10 +460,12 @@ export default function NutritionScreen() {
         language === "ar"
           ? "وجبة ألطف"
           : "Gentler Meal",
-      meal:
-        language === "ar"
-          ? "120g سمك + 100g أرز + 100g خضار + 15g أفوكادو"
-          : "120g fish + 100g rice + 100g vegetables + 15g avocado",
+      ingredients: [
+        { emoji: "🐟", nameAr: "سمك خفيف",       nameEn: "Light Fish",     grams: "120g" },
+        { emoji: "🌾", nameAr: "أرز مطبوخ",       nameEn: "Cooked Rice",    grams: "100g" },
+        { emoji: "🥬", nameAr: "خضار متنوعة",     nameEn: "Vegetables",     grams: "100g" },
+        { emoji: "🥑", nameAr: "أفوكادو",          nameEn: "Avocado",        grams: "15g"  },
+      ] as Ingredient[],
       macros:
         language === "ar"
           ? [
@@ -646,9 +681,43 @@ export default function NutritionScreen() {
             {nutritionData.mealTitle}
           </Text>
 
-          <Text style={styles.mealText}>
-            {nutritionData.meal}
-          </Text>
+          <View style={styles.mealKcalBlock}>
+            <Text style={styles.mealKcalText}>
+              {"🔥 "}
+              {computeKcal(nutritionData.macros)}
+              {language === "ar" ? " سعرة حرارية" : " kcal"}
+            </Text>
+          </View>
+
+          <View style={styles.ingredientsDivider} />
+
+          <View style={styles.ingredientList}>
+            {nutritionData.ingredients.map((ing, i) => (
+              <View
+                key={i}
+                style={[
+                  styles.ingredientRow,
+                  language === "ar" && styles.rowReverse,
+                ]}
+              >
+                <Text style={styles.ingredientEmoji}>{ing.emoji}</Text>
+                <Text
+                  style={[
+                    styles.ingredientName,
+                    language === "ar" && styles.rtlText,
+                  ]}
+                >
+                  {language === "ar" ? ing.nameAr : ing.nameEn}
+                </Text>
+                <View style={styles.ingredientSpacer} />
+                {ing.grams ? (
+                  <Text style={styles.ingredientGrams}>
+                    {ing.grams}
+                  </Text>
+                ) : null}
+              </View>
+            ))}
+          </View>
 
           <View style={styles.mealMacrosRow}>
             {nutritionData.macros.map(
@@ -844,13 +913,50 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  mealText: {
+  rowReverse: { flexDirection: "row-reverse" },
+
+  mealKcalBlock: {
     marginTop: 20,
-    color: "rgba(255,255,255,0.76)",
+    alignItems: "center",
+  },
+  mealKcalText: {
+    color: "rgba(255,255,255,0.88)",
     fontSize: 18,
-    lineHeight: 34,
+    fontWeight: "700",
+  },
+  ingredientsDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginVertical: 14,
+  },
+  ingredientList: {
+    gap: 2,
+  },
+  ingredientRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 8,
+  },
+  ingredientEmoji: {
+    fontSize: 19,
+    width: 26,
     textAlign: "center",
+  },
+  ingredientName: {
+    color: "rgba(255,255,255,0.90)",
+    fontSize: 15,
     fontWeight: "600",
+    lineHeight: 20,
+    flexShrink: 1,
+  },
+  ingredientSpacer: {
+    flex: 1,
+  },
+  ingredientGrams: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 13,
+    fontWeight: "500",
   },
 
   mealMacrosRow: {

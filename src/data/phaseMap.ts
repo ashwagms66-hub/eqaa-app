@@ -29,8 +29,8 @@ export const PHASES: Phase[] = [  {
 
     startDay: 1,
     endDay: 10,
-    icon: "☀️",
-    phaseArabic: "مرحلة القوة",
+    icon: "🌱",
+    phaseArabic: "مرحلة التجديد",
     description:
       "A phase often associated with rebuilding energy, momentum, and focus.",
     descriptionArabic:
@@ -62,8 +62,8 @@ export const PHASES: Phase[] = [  {
 
     startDay: 11,
     endDay: 15,
-    icon: "✨",
-    phaseArabic: "مرحلة التجلي",
+    icon: "⚡",
+    phaseArabic: "مرحلة القوة",
     description:
       "This phase may feel more expressive, creative, and socially open.",
     descriptionArabic:
@@ -96,7 +96,7 @@ export const PHASES: Phase[] = [  {
     startDay: 16,
     endDay: 19,
     icon: "🌙",
-    phaseArabic: "مرحلة القوة الثانية",
+    phaseArabic: "مرحلة الوضوح",
     description:
       "A quieter strength phase that may support reflection and grounding.",
     descriptionArabic:
@@ -129,7 +129,7 @@ export const PHASES: Phase[] = [  {
     startDay: 20,
     endDay: 28,
     icon: "🌊",
-    phaseArabic: "مرحلة الاحتواء",
+    phaseArabic: "مرحلة الهدوء",
     description:
       "A softer phase that may support rest, calm, and emotional awareness.",
     descriptionArabic:

@@ -1,638 +1,521 @@
-import React, {
-  useEffect,
-  useState,
-} from "react";
-
+import React, { useCallback, useEffect, useState } from "react";
 import {
   Alert,
-  Animated,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
-
 import { LinearGradient } from "expo-linear-gradient";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { router, useFocusEffect } from "expo-router";
 
-import {
-  Battery,
-  Moon,
-  Sparkles,
-  Zap,
-} from "lucide-react-native";
+import { useLanguage } from "@/src/context/LanguageContext";
+import { getDailyCheckIn, saveDailyCheckIn } from "@/src/storage/checkinStorage";
 
-import {
-  useLanguage,
-} from "@/src/context/LanguageContext";
+// ── data ──────────────────────────────────────────────────────────────────────
 
-import {
-  getEnergy,
-  getSleep,
-  getStress,
-  saveEnergy,
-  saveSleep,
-  saveStress,
-} from "@/src/storage/checkinStorage";
+const MOODS = [
+  { key: "calm",  emoji: "🌙", ar: "هدوء",    en: "Calm"    },
+  { key: "focus", emoji: "⚡", ar: "طاقة",    en: "Energy"  },
+  { key: "soft",  emoji: "💜", ar: "مشاعري",  en: "Reflect" },
+  { key: "slow",  emoji: "🥗", ar: "أكلي",    en: "Food"    },
+];
+
+const ENERGY_LEVELS = [
+  { value: 2,  emoji: "😴", ar: "منهكة",    en: "Drained"   },
+  { value: 4,  emoji: "🌧️", ar: "خافتة",   en: "Low"       },
+  { value: 6,  emoji: "🌤️", ar: "متوازنة", en: "Balanced"  },
+  { value: 8,  emoji: "⚡", ar: "جيدة",    en: "Good"      },
+  { value: 10, emoji: "🔥", ar: "مرتفعة",  en: "High"      },
+];
+
+const SLEEP_OPTIONS = [
+  { value: 4, label: "4h" },
+  { value: 5, label: "5h" },
+  { value: 6, label: "6h" },
+  { value: 7, label: "7h" },
+  { value: 8, label: "8h" },
+  { value: 9, label: "9h+" },
+];
+
+const SYMPTOMS = [
+  { key: "cramps",     emoji: "🌊", ar: "تقلصات",     en: "Cramps"      },
+  { key: "headache",   emoji: "😣", ar: "صداع",        en: "Headache"    },
+  { key: "fatigue",    emoji: "😴", ar: "إرهاق",       en: "Fatigue"     },
+  { key: "bloating",   emoji: "🫧", ar: "انتفاخ",      en: "Bloating"    },
+  { key: "anxiety",    emoji: "😟", ar: "قلق",          en: "Anxiety"     },
+  { key: "mood_swing", emoji: "💭", ar: "تقلب مزاج",   en: "Mood swings" },
+  { key: "insomnia",   emoji: "🌙", ar: "صعوبة نوم",   en: "Insomnia"    },
+  { key: "cravings",   emoji: "🍫", ar: "شهية زائدة",  en: "Cravings"    },
+];
+
+// ── screen ─────────────────────────────────────────────────────────────────────
 
 export default function CheckinScreen() {
   const { language } = useLanguage();
+  const isAr = language === "ar";
 
-  const [sleepHours, setSleepHours] =
-    useState(7);
+  const [mood,             setMood]             = useState<string | null>(null);
+  const [energy,           setEnergy]           = useState<number | null>(null);
+  const [sleepHours,       setSleepHours]       = useState<number | null>(null);
+  const [symptoms,         setSymptoms]         = useState<string[]>([]);
+  const [fastingCompleted, setFastingCompleted] = useState(false);
+  const [workoutCompleted, setWorkoutCompleted] = useState(false);
+  const [weightStr,        setWeightStr]        = useState("");
+  const [saving,           setSaving]           = useState(false);
+  const [saved,            setSaved]            = useState(false);
 
-  const [energyLevel, setEnergyLevel] =
-    useState(80);
-
-  const [stressLevel, setStressLevel] =
-    useState<
-      "Low" | "Medium" | "High"
-    >("Low");
-
-  const glowAnim = React.useRef(
-    new Animated.Value(0)
-  ).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, {
-          toValue: 1,
-          duration: 2600,
-          useNativeDriver: true,
-        }),
-        Animated.timing(glowAnim, {
-          toValue: 0,
-          duration: 2600,
-          useNativeDriver: true,
-        }),
-      ])
-    ).start();
-
-    async function loadData() {
-      const savedSleep =
-        await getSleep();
-
-      const savedEnergy =
-        await getEnergy();
-
-      const savedStress =
-        await getStress();
-
-      if (savedSleep !== null) {
-        setSleepHours(savedSleep);
+  useFocusEffect(
+    useCallback(() => {
+      async function load() {
+        const ci = await getDailyCheckIn();
+        if (!ci) return;
+        if (ci.mood)             setMood(ci.mood);
+        if (ci.energy)           setEnergy(ci.energy);
+        if (ci.sleepHours)       setSleepHours(ci.sleepHours);
+        if (ci.symptoms)         setSymptoms(ci.symptoms);
+        if (ci.fastingCompleted) setFastingCompleted(ci.fastingCompleted);
+        if (ci.workoutCompleted) setWorkoutCompleted(ci.workoutCompleted);
+        if (ci.weight)           setWeightStr(String(ci.weight));
       }
+      load();
+    }, [])
+  );
 
-      if (savedEnergy !== null) {
-        setEnergyLevel(savedEnergy);
-      }
-
-    if (
-  savedStress === "Low" ||
-  savedStress === "Medium" ||
-  savedStress === "High"
-) {
-  setStressLevel(savedStress);
-}
-    }
-
-    loadData();
-  }, []);
-
-  const dynamicGlow =
-    stressLevel === "High"
-      ? "#FF8EB8"
-      : energyLevel >= 80
-      ? "#FFD66B"
-      : "#C6A7FF";
-
-  const glowTranslate =
-    glowAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: [-20, 20],
-    });
-
-  async function saveCheckin() {
-    await saveSleep(sleepHours);
-
-    await saveEnergy(energyLevel);
-
-    await saveStress(stressLevel);
-
-    Alert.alert(
-      language === "ar"
-        ? "تم حفظ تسجيلك ✨"
-        : "Check-in Saved ✨"
+  function toggleSymptom(key: string) {
+    setSymptoms(prev =>
+      prev.includes(key) ? prev.filter(s => s !== key) : [...prev, key]
     );
   }
 
+  async function handleSave() {
+    setSaving(true);
+    try {
+      const weight = weightStr.trim() !== "" ? parseFloat(weightStr) : undefined;
+      await saveDailyCheckIn({
+        mood:             mood ?? undefined,
+        energy:           energy ?? undefined,
+        sleepHours:       sleepHours ?? undefined,
+        symptoms,
+        fastingCompleted,
+        workoutCompleted,
+        weight:           isNaN(weight as number) ? undefined : weight,
+      });
+      setSaved(true);
+      setTimeout(() => {
+        setSaved(false);
+        router.back();
+      }, 1000);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
-    <LinearGradient
-      colors={[
-        "#05050A",
-        "#121225",
-        "#241A3D",
-      ]}
-      style={styles.container}
-    >
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.ambientGlow,
-          {
-            backgroundColor:
-              dynamicGlow,
-            transform: [
-              {
-                translateX:
-                  glowTranslate,
-              },
-            ],
-          },
-        ]}
-      />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.label}>
-          {language === "ar"
-            ? "تسجيل إيقاع"
-            : "Daily Check-in"}
-        </Text>
-
-        <Text style={styles.title}>
-          {language === "ar"
-            ? "كيف تشعرين اليوم؟"
-            : "How do you feel today?"}
-        </Text>
-
-        <Text style={styles.subtitle}>
-          {language === "ar"
-            ? "كل تسجيل يساعد إيقاع على فهم طاقتك ومساعدتك بشكل ألطف."
-            : "Each check-in helps Eqa’a understand your rhythm more gently."}
-        </Text>
-
-        <LinearGradient
-          colors={[
-            "rgba(198,167,255,0.14)",
-            "rgba(255,255,255,0.05)",
-          ]}
-          style={styles.card}
+    <LinearGradient colors={["#05050A", "#121225", "#241A3D"]} style={s.container}>
+      <SafeAreaView style={{ flex: 1 }}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          <View style={styles.row}>
-            <Moon
-              size={24}
-              color="#C6A7FF"
-            />
-
-            <Text style={styles.cardTitle}>
-              {language === "ar"
-                ? "كيف كان نومك؟"
-                : "How was your sleep?"}
+          <ScrollView
+            contentContainerStyle={s.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {/* Header */}
+            <Text style={s.pageLabel}>{isAr ? "إيقاع" : "Eqa'a"}</Text>
+            <Text style={s.pageTitle}>{isAr ? "تسجيل اليوم" : "Daily Check-In"}</Text>
+            <Text style={[s.pageSub, isAr && { textAlign: "right" }]}>
+              {isAr
+                ? "بضع لحظات تساعد إيقاع على دعمك بشكل أعمق."
+                : "A few moments help Eqa'a support you more deeply."}
             </Text>
-          </View>
 
-          <View style={styles.moodGrid}>
-            {[
-              {
-                value: 4,
-                emoji: "😴",
-                ar: "متعب",
-                en: "Exhausted",
-              },
-              {
-                value: 6,
-                emoji: "🌙",
-                ar: "متوسط",
-                en: "Okay",
-              },
-              {
-                value: 8,
-                emoji: "✨",
-                ar: "ممتاز",
-                en: "Rested",
-              },
-            ].map((item) => {
-              const active =
-                sleepHours === item.value;
+            {/* ── 1. Mood ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "🌙  مزاجك اليوم" : "🌙  Today's Mood"}
+              </Text>
+              <View style={[s.grid2, isAr && { flexDirection: "row-reverse" }]}>
+                {MOODS.map(m => {
+                  const active = mood === m.key;
+                  return (
+                    <TouchableOpacity
+                      key={m.key}
+                      activeOpacity={0.85}
+                      onPress={() => setMood(m.key)}
+                      style={[s.moodCard, active && s.moodCardActive]}
+                    >
+                      <Text style={s.optEmoji}>{m.emoji}</Text>
+                      <Text style={[s.optLabel, active && s.optLabelActive]}>
+                        {isAr ? m.ar : m.en}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
 
-              return (
+            {/* ── 2. Energy ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "⚡  مستوى الطاقة" : "⚡  Energy Level"}
+              </Text>
+              <View style={[s.row5, isAr && { flexDirection: "row-reverse" }]}>
+                {ENERGY_LEVELS.map(e => {
+                  const active = energy === e.value;
+                  return (
+                    <TouchableOpacity
+                      key={e.value}
+                      activeOpacity={0.85}
+                      onPress={() => setEnergy(e.value)}
+                      style={[s.energyBtn, active && { backgroundColor: "#FFD66B22", borderColor: "#FFD66B" }]}
+                    >
+                      <Text style={s.optEmoji}>{e.emoji}</Text>
+                      <Text style={[s.optLabelSm, active && { color: "#FFD66B", fontWeight: "800" }]}>
+                        {isAr ? e.ar : e.en}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── 3. Sleep ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "💤  ساعات النوم" : "💤  Sleep Hours"}
+              </Text>
+              <View style={[s.row6, isAr && { flexDirection: "row-reverse" }]}>
+                {SLEEP_OPTIONS.map(o => {
+                  const active = sleepHours === o.value;
+                  return (
+                    <TouchableOpacity
+                      key={o.value}
+                      activeOpacity={0.85}
+                      onPress={() => setSleepHours(o.value)}
+                      style={[s.sleepBtn, active && { backgroundColor: "#C6A7FF22", borderColor: "#C6A7FF" }]}
+                    >
+                      <Text style={[s.sleepBtnTxt, active && { color: "#C6A7FF", fontWeight: "800" }]}>
+                        {o.label}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── 4. Symptoms ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "🌊  أعراض اليوم (اختياري)" : "🌊  Today's Symptoms (optional)"}
+              </Text>
+              <View style={[s.chipRow, isAr && { flexDirection: "row-reverse" }]}>
+                {SYMPTOMS.map(sym => {
+                  const active = symptoms.includes(sym.key);
+                  return (
+                    <TouchableOpacity
+                      key={sym.key}
+                      activeOpacity={0.85}
+                      onPress={() => toggleSymptom(sym.key)}
+                      style={[s.chip, active && s.chipActive]}
+                    >
+                      <Text style={s.chipEmoji}>{sym.emoji}</Text>
+                      <Text style={[s.chipTxt, active && s.chipTxtActive]}>
+                        {isAr ? sym.ar : sym.en}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </View>
+
+            {/* ── 5. Fasting + Workout toggles ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "✅  إنجازات اليوم" : "✅  Today's Achievements"}
+              </Text>
+              <View style={[s.toggleRow, isAr && { flexDirection: "row-reverse" }]}>
                 <TouchableOpacity
-                  key={item.value}
-                  activeOpacity={0.9}
-                  onPress={() =>
-                    setSleepHours(
-                      item.value
-                    )
-                  }
-                  style={[
-                    styles.moodCard,
-                    active && {
-                      backgroundColor:
-                        "#C6A7FF",
-                      borderColor:
-                        "#C6A7FF",
-                    },
-                  ]}
+                  activeOpacity={0.85}
+                  onPress={() => setFastingCompleted(p => !p)}
+                  style={[s.toggleCard, fastingCompleted && { backgroundColor: "#7FFFD422", borderColor: "#7FFFD4" }]}
                 >
-                  <Text style={styles.moodEmoji}>
-                    {item.emoji}
+                  <Text style={s.toggleEmoji}>⚡</Text>
+                  <Text style={[s.toggleTxt, fastingCompleted && { color: "#7FFFD4" }]}>
+                    {isAr ? "أكملتِ الصيام" : "Fasting done"}
                   </Text>
-
-                  <Text
-                    style={[
-                      styles.moodTitle,
-                      active && {
-                        color: "#111111",
-                      },
-                    ]}
-                  >
-                    {language === "ar"
-                      ? item.ar
-                      : item.en}
-                  </Text>
+                  <View style={[s.togglePill, { backgroundColor: fastingCompleted ? "#7FFFD4" : "rgba(255,255,255,0.10)" }]}>
+                    <Text style={[s.togglePillTxt, { color: fastingCompleted ? "#111" : "rgba(255,255,255,0.35)" }]}>
+                      {fastingCompleted ? "✓" : "○"}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </LinearGradient>
 
-        <LinearGradient
-          colors={[
-            "rgba(255,214,107,0.14)",
-            "rgba(255,255,255,0.05)",
-          ]}
-          style={styles.card}
-        >
-          <View style={styles.row}>
-            <Zap
-              size={24}
-              color="#FFD66B"
-            />
-
-            <Text style={styles.cardTitle}>
-              {language === "ar"
-                ? "كيف طاقتك اليوم؟"
-                : "How is your energy today?"}
-            </Text>
-          </View>
-
-          <View style={styles.moodGrid}>
-            {[
-              {
-                value: 20,
-                emoji: "🥺",
-                ar: "منخفضة",
-                en: "Low",
-              },
-              {
-                value: 60,
-                emoji: "🌤️",
-                ar: "متوازنة",
-                en: "Balanced",
-              },
-              {
-                value: 100,
-                emoji: "⚡",
-                ar: "مرتفعة",
-                en: "High",
-              },
-            ].map((item) => {
-              const active =
-                energyLevel === item.value;
-
-              return (
                 <TouchableOpacity
-                  key={item.value}
-                  activeOpacity={0.9}
-                  onPress={() =>
-                    setEnergyLevel(
-                      item.value
-                    )
-                  }
-                  style={[
-                    styles.moodCard,
-                    active && {
-                      backgroundColor:
-                        "#FFD66B",
-                      borderColor:
-                        "#FFD66B",
-                    },
-                  ]}
+                  activeOpacity={0.85}
+                  onPress={() => setWorkoutCompleted(p => !p)}
+                  style={[s.toggleCard, workoutCompleted && { backgroundColor: "#C6A7FF22", borderColor: "#C6A7FF" }]}
                 >
-                  <Text style={styles.moodEmoji}>
-                    {item.emoji}
+                  <Text style={s.toggleEmoji}>🏃</Text>
+                  <Text style={[s.toggleTxt, workoutCompleted && { color: "#C6A7FF" }]}>
+                    {isAr ? "تمارين اليوم" : "Workout done"}
                   </Text>
-
-                  <Text
-                    style={[
-                      styles.moodTitle,
-                      active && {
-                        color: "#111111",
-                      },
-                    ]}
-                  >
-                    {language === "ar"
-                      ? item.ar
-                      : item.en}
-                  </Text>
+                  <View style={[s.togglePill, { backgroundColor: workoutCompleted ? "#C6A7FF" : "rgba(255,255,255,0.10)" }]}>
+                    <Text style={[s.togglePillTxt, { color: workoutCompleted ? "#111" : "rgba(255,255,255,0.35)" }]}>
+                      {workoutCompleted ? "✓" : "○"}
+                    </Text>
+                  </View>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </LinearGradient>
+              </View>
+            </View>
 
-        <LinearGradient
-          colors={[
-            "rgba(255,142,184,0.14)",
-            "rgba(255,255,255,0.05)",
-          ]}
-          style={styles.card}
-        >
-          <View style={styles.row}>
-            <Battery
-              size={24}
-              color="#FF8EB8"
-            />
+            {/* ── 6. Weight (optional) ── */}
+            <View style={s.section}>
+              <Text style={[s.sectionLabel, isAr && { textAlign: "right" }]}>
+                {isAr ? "⚖️  وزنكِ اليوم (اختياري)" : "⚖️  Today's Weight (optional)"}
+              </Text>
+              <View style={s.weightRow}>
+                <TextInput
+                  style={[s.weightInput, isAr && { textAlign: "right" }]}
+                  value={weightStr}
+                  onChangeText={setWeightStr}
+                  placeholder={isAr ? "مثال: 62.5" : "e.g. 62.5"}
+                  placeholderTextColor="rgba(255,255,255,0.28)"
+                  keyboardType="decimal-pad"
+                  maxLength={6}
+                />
+                <Text style={s.weightUnit}>{isAr ? "كجم" : "kg"}</Text>
+              </View>
+            </View>
 
-            <Text style={styles.cardTitle}>
-              {language === "ar"
-                ? "كيف مستوى الضغط؟"
-                : "How is your stress level?"}
-            </Text>
-          </View>
+            {/* ── Save button ── */}
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={handleSave}
+              disabled={saving}
+              style={[s.saveBtn, saved && { backgroundColor: "#7FFFD4" }]}
+            >
+              <Text style={s.saveBtnTxt}>
+                {saved
+                  ? (isAr ? "✓  تم الحفظ" : "✓  Saved")
+                  : saving
+                  ? (isAr ? "جارٍ الحفظ…" : "Saving…")
+                  : (isAr ? "حفظ تسجيل اليوم" : "Save Check-In")}
+              </Text>
+            </TouchableOpacity>
 
-          <View style={styles.moodGrid}>
-            {[
-              {
-                value: "Low",
-                emoji: "🌸",
-                ar: "هادئ",
-                en: "Calm",
-              },
-              {
-                value: "Medium",
-                emoji: "🌧️",
-                ar: "متوسط",
-                en: "Moderate",
-              },
-              {
-                value: "High",
-                emoji: "🔥",
-                ar: "مرتفع",
-                en: "Overwhelmed",
-              },
-            ].map((item) => {
-              const active =
-                stressLevel === item.value;
-
-              return (
-                <TouchableOpacity
-                  key={item.value}
-                  activeOpacity={0.9}
-                  onPress={() =>
-                    setStressLevel(
-                      item.value as
-                        | "Low"
-                        | "Medium"
-                        | "High"
-                    )
-                  }
-                  style={[
-                    styles.moodCard,
-                    active && {
-                      backgroundColor:
-                        "#FF8EB8",
-                      borderColor:
-                        "#FF8EB8",
-                    },
-                  ]}
-                >
-                  <Text style={styles.moodEmoji}>
-                    {item.emoji}
-                  </Text>
-
-                  <Text
-                    style={[
-                      styles.moodTitle,
-                      active && {
-                        color: "#111111",
-                      },
-                    ]}
-                  >
-                    {language === "ar"
-                      ? item.ar
-                      : item.en}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </LinearGradient>
-
-        <LinearGradient
-          colors={[
-            "rgba(198,167,255,0.18)",
-            "rgba(255,255,255,0.05)",
-          ]}
-          style={styles.summaryCard}
-        >
-          <View style={styles.summaryTop}>
-            <Sparkles
-              size={24}
-              color="#C6A7FF"
-            />
-
-            <Text style={styles.summaryTitle}>
-              {language === "ar"
-                ? "ملخص إيقاع"
-                : "Rhythm Summary"}
-            </Text>
-          </View>
-
-          <Text style={styles.summaryText}>
-            {stressLevel === "High"
-              ? language === "ar"
-                ? "إيقاع يقترح اليوم لحظات أهدأ، نوم أفضل، وتقليل الضغط الداخلي."
-                : "Eqa’a suggests a slower and softer rhythm today."
-              : energyLevel >= 80
-              ? language === "ar"
-                ? "طاقتك تبدو مرتفعة اليوم — وقت مناسب للحركة والتركيز."
-                : "Your energy feels elevated today — a good time for focus and movement."
-              : language === "ar"
-              ? "إيقاعك يبدو متوازنًا نسبيًا اليوم."
-              : "Your rhythm feels relatively balanced today."}
-          </Text>
-        </LinearGradient>
-
-        <TouchableOpacity
-          activeOpacity={0.9}
-          style={styles.saveButton}
-          onPress={saveCheckin}
-        >
-          <Text style={styles.saveButtonText}>
-            {language === "ar"
-              ? "حفظ تسجيل اليوم"
-              : "Save Check-in"}
-          </Text>
-        </TouchableOpacity>
-      </ScrollView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  ambientGlow: {
-    position: "absolute",
-    width: 280,
-    height: 280,
-    borderRadius: 999,
-    top: -100,
-    alignSelf: "center",
-    opacity: 0.22,
-  },
+// ── styles ─────────────────────────────────────────────────────────────────────
 
-  container: {
-    flex: 1,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1 },
 
   scroll: {
-    paddingTop: 110,
     paddingHorizontal: 22,
-    paddingBottom: 180,
+    paddingTop: 20,
+    paddingBottom: 120,
+    gap: 8,
   },
 
-  label: {
+  pageLabel: {
     color: "#C6A7FF",
-    fontSize: 15,
+    fontSize: 11,
     fontWeight: "800",
     textAlign: "center",
+    letterSpacing: 1.8,
+    textTransform: "uppercase",
+    marginBottom: 6,
   },
-
-  title: {
+  pageTitle: {
     color: "#FFFFFF",
-    fontSize: 40,
+    fontSize: 36,
     fontWeight: "900",
-    marginTop: 12,
     textAlign: "center",
+    letterSpacing: -0.5,
   },
-
-  subtitle: {
-    color: "rgba(255,255,255,0.68)",
-    fontSize: 16,
-    lineHeight: 30,
+  pageSub: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
     textAlign: "center",
-    marginTop: 18,
-    marginBottom: 36,
-    paddingHorizontal: 10,
+    lineHeight: 22,
+    marginTop: 8,
+    marginBottom: 10,
   },
 
-  card: {
-    marginBottom: 22,
-    borderRadius: 30,
-    padding: 22,
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.05)",
-  },
-
-  row: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    marginBottom: 20,
-  },
-
-  cardTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-  },
-
-  moodGrid: {
-    flexDirection: "row",
+  section: {
+    marginTop: 22,
     gap: 14,
-    justifyContent: "space-between",
   },
-
-  moodCard: {
-    flex: 1,
-    minHeight: 126,
-    borderRadius: 28,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.05)",
-    paddingHorizontal: 10,
-  },
-
-  moodEmoji: {
-    fontSize: 34,
-    marginBottom: 14,
-  },
-
-  moodTitle: {
+  sectionLabel: {
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
-    textAlign: "center",
   },
 
-  summaryCard: {
-    borderRadius: 32,
-    padding: 24,
-    marginTop: 10,
+  // mood grid 2×2
+  grid2: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+  moodCard: {
+    width: "47%",
+    paddingVertical: 18,
+    borderRadius: 24,
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
     borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.05)",
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  moodCardActive: {
+    backgroundColor: "rgba(198,167,255,0.18)",
+    borderColor: "#C6A7FF",
   },
 
-  summaryTop: {
+  // shared option styles
+  optEmoji:      { fontSize: 26 },
+  optLabel:      { color: "rgba(255,255,255,0.65)", fontSize: 14, fontWeight: "700" },
+  optLabelActive:{ color: "#FFFFFF", fontWeight: "900" },
+  optLabelSm:    { color: "rgba(255,255,255,0.50)", fontSize: 11, fontWeight: "600", textAlign: "center" },
+
+  // energy 5-col row
+  row5: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  energyBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 20,
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+
+  // sleep 6-col row
+  row6: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  sleepBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  sleepBtnTxt: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  // symptom chips
+  chipRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+  chip: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 18,
-  },
-
-  summaryTitle: {
-    color: "#FFFFFF",
-    fontSize: 22,
-    fontWeight: "900",
-  },
-
-  summaryText: {
-    color: "rgba(255,255,255,0.76)",
-    fontSize: 16,
-    lineHeight: 30,
-    fontWeight: "600",
-  },
-
-  saveButton: {
-    marginTop: 34,
-    height: 62,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
     borderRadius: 999,
-    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.10)",
+  },
+  chipActive: {
+    backgroundColor: "rgba(255,111,174,0.18)",
+    borderColor: "#FF6FAE",
+  },
+  chipEmoji:    { fontSize: 14 },
+  chipTxt:      { color: "rgba(255,255,255,0.60)", fontSize: 13, fontWeight: "600" },
+  chipTxtActive:{ color: "#FF6FAE", fontWeight: "800" },
+
+  // fasting/workout toggles
+  toggleRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  toggleCard: {
+    flex: 1,
+    paddingVertical: 16,
+    paddingHorizontal: 14,
+    borderRadius: 22,
     alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+  },
+  toggleEmoji:   { fontSize: 24 },
+  toggleTxt:     { color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: "700", textAlign: "center" },
+  togglePill:    { width: 32, height: 20, borderRadius: 999, alignItems: "center", justifyContent: "center" },
+  togglePillTxt: { fontSize: 12, fontWeight: "900" },
+
+  // weight input
+  weightRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  weightInput: {
+    flex: 1,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    paddingHorizontal: 18,
+    color: "#FFFFFF",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  weightUnit: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 16,
+    fontWeight: "700",
+    width: 40,
+  },
+
+  // save
+  saveBtn: {
+    marginTop: 32,
+    height: 60,
+    borderRadius: 999,
     backgroundColor: "#C6A7FF",
+    alignItems: "center",
+    justifyContent: "center",
     shadowColor: "#C6A7FF",
     shadowOpacity: 0.35,
-    shadowRadius: 24,
-    shadowOffset: {
-      width: 0,
-      height: 10,
-    },
-    elevation: 14,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 8 },
   },
-
-  saveButtonText: {
+  saveBtnTxt: {
     color: "#111111",
     fontSize: 17,
     fontWeight: "900",
+    letterSpacing: 0.2,
   },
 });

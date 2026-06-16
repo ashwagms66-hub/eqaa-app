@@ -31,7 +31,31 @@ const PERIOD_COLOR = "#FF6FAE";
 const FERTILE_COLOR = "#C6A7FF";
 const OVULATION_COLOR = "#F7D58D";
 
-export default function MonthCalendar() {
+interface Props {
+  lastPeriodDate?: string;
+  cycleLength?: number;
+}
+
+// Returns cycle day (1-based) for a given calendar date relative to lastPeriodStart
+function getCycleDayForDate(date: Date, lastPeriodStart: Date, cycleLength: number): number | null {
+  const dateLocal  = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const startLocal = new Date(lastPeriodStart.getFullYear(), lastPeriodStart.getMonth(), lastPeriodStart.getDate());
+  const diff = Math.floor((dateLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24));
+  if (diff < 0) return null;
+  return (diff % cycleLength) + 1;
+}
+
+// Returns a semi-transparent phase background color for a given cycle day
+function getPhaseBackground(cycleDay: number): string {
+  if (cycleDay <= 5)  return "rgba(255,111,174,0.78)"; // menstrual — pink
+  if (cycleDay <= 10) return "rgba(233,207,116,0.42)"; // renewal   — warm yellow
+  if (cycleDay <= 13) return "rgba(198,167,255,0.48)"; // power     — purple
+  if (cycleDay <= 15) return "rgba(167,139,250,0.62)"; // fertile   — deep purple
+  if (cycleDay <= 19) return "rgba(90,200,190,0.36)";  // clarity   — teal
+  return                      "rgba(100,140,200,0.26)"; // rest      — muted blue
+}
+
+export default function MonthCalendar({ lastPeriodDate, cycleLength = 28 }: Props) {
   const today = new Date();
 
   const [currentMonth, setCurrentMonth] = useState(today.getMonth());
@@ -43,21 +67,19 @@ export default function MonthCalendar() {
     Record<string, any>
   >({});
 
-  const lastPeriodStart = new Date(
-    today.getFullYear(),
-    today.getMonth(),
-    2
-  );
+  const lastPeriodStart = lastPeriodDate
+    ? new Date(lastPeriodDate + "T12:00:00")
+    : new Date(today.getFullYear(), today.getMonth(), 1);
 
   const monthDays = useMemo(() => {
     return generateMonthCalendar(
       currentYear,
       currentMonth,
       lastPeriodStart,
-      28,
+      cycleLength,
       5
     );
-  }, [currentMonth, currentYear]);
+  }, [currentMonth, currentYear, lastPeriodDate, cycleLength]);
 
   const loadCheckIns = useCallback(async () => {
     try {
@@ -153,20 +175,16 @@ export default function MonthCalendar() {
               checkIns[day.iso]?.symptoms
                 ?.length || 0;
 
-            let backgroundColor = "transparent";
             let borderColor = "rgba(255,255,255,0.06)";
 
-            if (periodState) {
-              backgroundColor = PERIOD_COLOR;
-            }
+            // Base: phase color derived from cycle day
+            const cday = getCycleDayForDate(day.date, lastPeriodStart, cycleLength);
+            let backgroundColor: string = cday !== null ? getPhaseBackground(cday) : "transparent";
 
-            if (fertileState) {
-              backgroundColor = FERTILE_COLOR;
-            }
-
-            if (ovulationState) {
-              backgroundColor = OVULATION_COLOR;
-            }
+            // Override with brighter calendarEngine flags for period/fertile/ovulation
+            if (periodState)   backgroundColor = PERIOD_COLOR;
+            if (fertileState)  backgroundColor = FERTILE_COLOR;
+            if (ovulationState) backgroundColor = OVULATION_COLOR;
 
             return (
               <View key={index}>

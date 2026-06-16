@@ -2,7 +2,7 @@
   "expo": {
     "name": "إيقاع | Eqa’a",
     "slug": "eqaa-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "eqaa",
@@ -20,7 +20,7 @@
     "android": {
       "package": "com.ashwaq.eqaa",
       "adaptiveIcon": {
-        "backgroundColor": "#0F1017",
+"backgroundColor": "#090B1A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -43,7 +43,7 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#0F1017",
+"backgroundColor": "#090B1A",
           "dark": {
             "backgroundColor": "#0F1017"
           }

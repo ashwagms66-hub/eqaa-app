@@ -8,35 +8,54 @@ import React, {
 } from "react";
 import {
     Pressable,
+    ScrollView,
     StyleSheet,
     Text,
     View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { saveLifeMode } from "@/src/storage/profileStorage";
 
 const modes = [
   {
     key: "regular",
-    emoji: "🌙",
-    title: "منتظم",
-    text:
-      "إيقاع دورتك غالبًا ثابت ويمكن توقعه بشكل أوضح.",
+    emoji: "☀️",
+    titleAr: "دورة منتظمة",
+    titleEn: "Regular Cycle",
+    textAr: "إيقاع دورتك غالبًا ثابت ويمكن توقعه بشكل أوضح.",
+    textEn: "Your cycle is generally regular and predictable.",
   },
-
   {
-    key: "irregular",
-    emoji: "✨",
-    title: "غير منتظم",
-    text:
-      "قد تختلف المواعيد والطاقة من شهر لآخر بشكل أكبر.",
+    key: "pcos",
+    emoji: "〰️",
+    titleAr: "غير منتظمة / تكيس",
+    titleEn: "Irregular / PCOS",
+    textAr: "قد تختلف المواعيد والطاقة من شهر لآخر بشكل أكبر.",
+    textEn: "Your cycle may vary — Eqa'a adapts gently.",
   },
-
   {
     key: "moon",
-    emoji: "🪐",
-    title: "Moon Mode",
-    text:
-      "تجربة هادئة مرنة تركز على الطاقة والمشاعر أكثر من التتبع التقليدي.",
+    emoji: "🌙",
+    titleAr: "مزامنة القمر",
+    titleEn: "Moon Sync",
+    textAr: "تجربة هادئة تركز على الطاقة والمشاعر أكثر من التتبع التقليدي.",
+    textEn: "A symbolic rhythm inspired by moon phases.",
+  },
+  {
+    key: "pregnancy",
+    emoji: "♡",
+    titleAr: "حامل",
+    titleEn: "Pregnancy",
+    textAr: "تركيز على الراحة والتغذية والهدوء بدون مراحل دورة.",
+    textEn: "Focused on nourishment, calm and gentle balance.",
+  },
+  {
+    key: "postpartum",
+    emoji: "☼",
+    titleAr: "بعد الولادة / رضاعة",
+    titleEn: "Postpartum",
+    textAr: "دعم التعافي والترطيب والنوم بدون ضغط.",
+    textEn: "Recovery, hydration and nourishing support.",
   },
 ];
 
@@ -48,6 +67,11 @@ export default function LifeModeScreen() {
     return !!selected;
   }, [selected]);
 
+  async function handleContinue() {
+    await saveLifeMode(selected);
+    router.push("/onboarding/sync");
+  }
+
   return (
     <LinearGradient
       colors={[
@@ -58,7 +82,11 @@ export default function LifeModeScreen() {
       style={styles.container}
     >
       <SafeAreaView style={styles.safe}>
-        <View style={styles.content}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+          bounces={false}
+        >
           <View style={styles.hero}>
             <View style={styles.orbOuter}>
               <View style={styles.orbMiddle}>
@@ -112,26 +140,22 @@ export default function LifeModeScreen() {
                   </View>
 
                   <Text style={styles.modeTitle}>
-                    {item.title}
+                    {item.titleAr}
                   </Text>
 
                   <Text style={styles.modeText}>
-                    {item.text}
+                    {item.textAr}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
-        </View>
+        </ScrollView>
 
         <View style={styles.bottomArea}>
           <Pressable
             disabled={!canContinue}
-            onPress={() =>
-              router.push(
-                "/onboarding/sync"
-              )
-            }
+            onPress={handleContinue}
             style={styles.continueButton}
           >
             <Text style={styles.continueText}>
@@ -154,10 +178,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  content: {
-    flex: 1,
+  scroll: {
     paddingHorizontal: 24,
     paddingTop: 24,
+    paddingBottom: 140,
   },
 
   hero: {

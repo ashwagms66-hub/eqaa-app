@@ -3,17 +3,18 @@
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
 import React, {
-    useMemo,
-    useState,
+  useMemo,
+  useState,
 } from "react";
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { saveCycleLength, saveLastPeriod } from "@/src/storage/cycleStorage";
 
 const days = Array.from(
   { length: 31 },
@@ -48,6 +49,16 @@ export default function CycleScreen() {
     return !!selectedDay;
   }, [selectedDay]);
 
+  async function handleContinue() {
+    const year = today.getFullYear();
+    const month = String(selectedMonth + 1).padStart(2, "0");
+    const day = String(selectedDay).padStart(2, "0");
+    const dateStr = `${year}-${month}-${day}`;
+    await saveLastPeriod(dateStr);
+    await saveCycleLength(28);
+    router.push("/onboarding/life-mode");
+  }
+
   return (
     <LinearGradient
       colors={[
@@ -58,10 +69,11 @@ export default function CycleScreen() {
       style={styles.container}
     >
       <SafeAreaView style={styles.safe}>
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.scroll}
-        >
+       <ScrollView
+  showsVerticalScrollIndicator={false}
+  contentContainerStyle={styles.scroll}
+  bounces={false}
+>
           <View style={styles.hero}>
             <View style={styles.orbOuter}>
               <View style={styles.orbMiddle}>
@@ -161,25 +173,33 @@ export default function CycleScreen() {
             </View>
           </View>
 
-          <View style={styles.previewCard}>
-            <Text style={styles.previewLabel}>
-              التاريخ المختار
-            </Text>
+        <View style={styles.previewCard}>
+  <Text style={styles.previewLabel}>
+    بداية إيقاعك الحالي
+  </Text>
 
-            <Text style={styles.previewDate}>
-              {selectedDay} {months[selectedMonth]}
-            </Text>
-          </View>
+  <Text style={styles.previewDate}>
+    {selectedDay} {months[selectedMonth]}
+  </Text>
+
+  <Text
+    style={{
+      color: "rgba(255,255,255,0.60)",
+      fontSize: 14,
+      textAlign: "center",
+      marginTop: 10,
+      lineHeight: 24,
+    }}
+  >
+    يساعد هذا إيقاع على تقديم تجربة يومية أكثر دقة وهدوءًا.
+  </Text>
+</View>
         </ScrollView>
 
         <View style={styles.bottomArea}>
           <Pressable
             disabled={!canContinue}
-            onPress={() =>
-              router.push(
-                "/onboarding/life-mode"
-              )
-            }
+            onPress={handleContinue}
             style={[
               styles.continueButton,
               !canContinue && {
@@ -207,10 +227,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  scroll: {
-    paddingHorizontal: 24,
-    paddingBottom: 180,
-  },
+ scroll: {
+  paddingHorizontal: 24,
+  paddingBottom: 140,
+},
 
   hero: {
     alignItems: "center",
@@ -363,19 +383,23 @@ const styles = StyleSheet.create({
     color: "#171726",
   },
 
-  previewCard: {
-    marginTop: 42,
+previewCard: {
+  marginTop: 42,
 
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
+  backgroundColor:
+    "rgba(255,255,255,0.05)",
 
-    borderRadius: 30,
-    padding: 24,
+  borderRadius: 34,
+  padding: 26,
 
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.06)",
-  },
+  borderWidth: 1,
+  borderColor:
+    "rgba(255,255,255,0.06)",
+
+  shadowColor: "#C6A7FF",
+  shadowOpacity: 0.12,
+  shadowRadius: 24,
+},
 
   previewLabel: {
     color: "rgba(255,255,255,0.58)",
@@ -397,7 +421,7 @@ const styles = StyleSheet.create({
     bottom: 0,
 
     paddingHorizontal: 24,
-    paddingBottom: 34,
+paddingBottom: 42,
     paddingTop: 18,
 
     backgroundColor:

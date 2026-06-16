@@ -16,14 +16,19 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { saveName } from "@/src/storage/profileStorage";
 
 export default function NameScreen() {
-  const [name, setName] =
-    useState("");
+  const [name, setName] = useState("");
 
   const canContinue = useMemo(() => {
     return name.trim().length > 1;
   }, [name]);
+
+  async function handleContinue() {
+    await saveName(name.trim());
+    router.push("/onboarding/cycle");
+  }
 
   return (
     <LinearGradient
@@ -79,11 +84,7 @@ export default function NameScreen() {
           <View style={styles.bottomArea}>
             <Pressable
               disabled={!canContinue}
-              onPress={() =>
-                router.push(
-                  "/onboarding/cycle"
-                )
-              }
+              onPress={handleContinue}
               style={[
                 styles.continueButton,
                 !canContinue && {

@@ -51,9 +51,9 @@ export function getPhaseData(
   if (phase === "power") {
     return {
       key: "power",
-      titleEn: "Power Phase",
-      titleAr: "مرحلة القوة",
-      color: "#E7C95F",
+      titleEn: "Renewal Phase",
+      titleAr: "مرحلة التجديد",
+      color: "#5BBB85",
       fasting:
         "Some people may feel comfortable with slightly longer fasting windows during this phase.",
       reflection:
@@ -64,11 +64,9 @@ export function getPhaseData(
   if (phase === "manifestation") {
     return {
       key: "manifestation",
-      titleEn:
-        "Manifestation Phase",
-      titleAr:
-        "مرحلة التجلي",
-      color: "#C7A6FF",
+      titleEn: "Power Phase",
+      titleAr: "مرحلة القوة",
+      color: "#E9CF74",
       fasting:
         "Lighter fasting windows may feel more balanced during this phase.",
       reflection:
@@ -82,7 +80,7 @@ export function getPhaseData(
       titleEn:
         "Second Power Phase",
       titleAr:
-        "مرحلة القوة الثانية",
+        "مرحلة الوضوح",
       color: "#76A7FF",
       fasting:
         "Balanced fasting and nourishment may support consistency.",
@@ -94,7 +92,7 @@ export function getPhaseData(
   return {
     key: "nurture",
     titleEn: "Nurture Phase",
-    titleAr: "مرحلة الاحتواء",
+    titleAr: "مرحلة الهدوء",
     color: "#F3A6C6",
     fasting:
       "Gentler nourishment and slower rhythms may feel more supportive.",

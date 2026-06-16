@@ -1,27 +1,23 @@
-import { useEffect } from "react";
-
-import {
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-
 import { router } from "expo-router";
+import { useEffect } from "react";
+import { Image, StyleSheet, View } from "react-native";
 
 export default function SplashScreen() {
   useEffect(() => {
     const timer = setTimeout(() => {
-      router.replace("/(tabs)");
-    }, 1200);
+      router.replace("/(tabs)" as any);
+    }, 2200);
 
     return () => clearTimeout(timer);
   }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.logo}>
-        إيقاع
-      </Text>
+      <Image
+        source={require("../assets/images/splash-icon.png")}
+        style={styles.logo}
+        resizeMode="contain"
+      />
     </View>
   );
 }
@@ -29,14 +25,13 @@ export default function SplashScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#05050A",
+    backgroundColor: "#090B1A",
     justifyContent: "center",
     alignItems: "center",
   },
 
   logo: {
-    color: "#FFFFFF",
-    fontSize: 42,
-    fontWeight: "900",
+    width: "100%",
+    height: "100%",
   },
 });

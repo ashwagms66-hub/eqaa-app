@@ -6,6 +6,7 @@ import {
 } from "@/src/storage/checkinStorage";
 
 import { BlurView } from "expo-blur";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import {
   Brain,
@@ -38,91 +39,27 @@ export type DayModalProps = {
 };
 
 const moods = [
-  {
-    key: "calm",
-    ar: "هادئة",
-    en: "Calm",
-    icon: Moon,
-  },
-  {
-    key: "focused",
-    ar: "مركزة",
-    en: "Focused",
-    icon: Brain,
-  },
-  {
-    key: "happy",
-    ar: "سعيدة",
-    en: "Happy",
-    icon: Sparkles,
-  },
-  {
-    key: "sensitive",
-    ar: "حساسة",
-    en: "Sensitive",
-    icon: Heart,
-  },
+  { key: "calm",      ar: "هادئة",  en: "Calm",      icon: Moon },
+  { key: "focused",   ar: "مركزة",  en: "Focused",   icon: Brain },
+  { key: "happy",     ar: "سعيدة",  en: "Happy",     icon: Sparkles },
+  { key: "sensitive", ar: "حساسة",  en: "Sensitive", icon: Heart },
 ];
 
 const symptoms = [
-  {
-    key: "cramps",
-    ar: "تقلصات",
-    en: "Cramps",
-  },
-  {
-    key: "headache",
-    ar: "صداع",
-    en: "Headache",
-  },
-  {
-    key: "bloating",
-    ar: "انتفاخ",
-    en: "Bloating",
-  },
-  {
-    key: "fatigue",
-    ar: "إرهاق",
-    en: "Fatigue",
-  },
-  {
-    key: "back_pain",
-    ar: "ألم ظهر",
-    en: "Back Pain",
-  },
-  {
-    key: "mood_swing",
-    ar: "تقلب مزاج",
-    en: "Mood Swing",
-  },
-  {
-    key: "low_energy",
-    ar: "طاقة منخفضة",
-    en: "Low Energy",
-  },
-  {
-    key: "cravings",
-    ar: "رغبات غذائية",
-    en: "Cravings",
-  },
+  { key: "cramps",     ar: "تقلصات",        en: "Cramps" },
+  { key: "headache",   ar: "صداع",           en: "Headache" },
+  { key: "bloating",   ar: "انتفاخ",         en: "Bloating" },
+  { key: "fatigue",    ar: "إرهاق",          en: "Fatigue" },
+  { key: "back_pain",  ar: "ألم ظهر",        en: "Back Pain" },
+  { key: "mood_swing", ar: "تقلب مزاج",      en: "Mood Swing" },
+  { key: "low_energy", ar: "طاقة منخفضة",    en: "Low Energy" },
+  { key: "cravings",   ar: "رغبات غذائية",   en: "Cravings" },
 ];
 
 const flows = [
-  {
-    key: "Light",
-    ar: "خفيف",
-    en: "Light",
-  },
-  {
-    key: "Medium",
-    ar: "متوسط",
-    en: "Medium",
-  },
-  {
-    key: "Heavy",
-    ar: "غزير",
-    en: "Heavy",
-  },
+  { key: "Light",  ar: "خفيف",  en: "Light" },
+  { key: "Medium", ar: "متوسط", en: "Medium" },
+  { key: "Heavy",  ar: "غزير",  en: "Heavy" },
 ];
 
 export default function DayModal({
@@ -131,58 +68,29 @@ export default function DayModal({
   onClose,
 }: DayModalProps) {
   const { language } = useLanguage();
-
+  const insets = useSafeAreaInsets();
   const isArabic = language === "ar";
 
-  const [selectedMood, setSelectedMood] =
-    useState("");
-
-  const [selectedFlow, setSelectedFlow] =
-    useState<
-      "Light" | "Medium" | "Heavy" | ""
-    >("");
-
-  const [selectedSymptoms, setSelectedSymptoms] =
-    useState<string[]>([]);
-
-  const [saving, setSaving] =
-    useState(false);
-
-  const [energy, setEnergy] =
-    useState(72);
-
-  const [notes, setNotes] =
-    useState("");
-
-  const [isPeriodDay, setIsPeriodDay] =
-    useState(false);
+  const [selectedMood, setSelectedMood] = useState("");
+  const [selectedFlow, setSelectedFlow] = useState<"Light" | "Medium" | "Heavy" | "">("");
+  const [selectedSymptoms, setSelectedSymptoms] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [energy, setEnergy] = useState(72);
+  const [notes, setNotes] = useState("");
+  const [isPeriodDay, setIsPeriodDay] = useState(false);
 
   useEffect(() => {
     async function loadExistingCheckIn() {
       try {
         if (!visible) return;
-
-        const existing =
-          await getCheckIn(selectedDate);
-
+        const existing = await getCheckIn(selectedDate);
         if (existing) {
           setSelectedMood(existing.mood || "");
-
-          setSelectedFlow(
-            existing.flow || ""
-          );
-
-          setSelectedSymptoms(
-            existing.symptoms || []
-          );
-
+          setSelectedFlow(existing.flow || "");
+          setSelectedSymptoms(existing.symptoms || []);
           setEnergy(existing.energy || 72);
-
           setNotes(existing.notes || "");
-
-          setIsPeriodDay(
-            existing.isPeriodDay || false
-          );
+          setIsPeriodDay(existing.isPeriodDay || false);
         } else {
           setSelectedMood("");
           setSelectedFlow("");
@@ -195,41 +103,29 @@ export default function DayModal({
         console.log(error);
       }
     }
-
     loadExistingCheckIn();
   }, [visible, selectedDate]);
 
   function toggleSymptom(symptom: string) {
-    setSelectedSymptoms((prev) => {
-      if (prev.includes(symptom)) {
-        return prev.filter(
-          (s) => s !== symptom
-        );
-      }
-
-      return [...prev, symptom];
-    });
+    setSelectedSymptoms((prev) =>
+      prev.includes(symptom) ? prev.filter((s) => s !== symptom) : [...prev, symptom]
+    );
   }
 
   async function handleSaveCheckIn() {
     try {
       setSaving(true);
-
       const payload: DailyCheckIn = {
         date: selectedDate,
         mood: selectedMood,
-        flow:
-          selectedFlow || undefined,
+        flow: selectedFlow || undefined,
         symptoms: selectedSymptoms,
         energy,
         notes,
         isPeriodDay,
-        createdAt:
-          new Date().toISOString(),
+        createdAt: new Date().toISOString(),
       };
-
       await saveCheckIn(payload);
-
       onClose();
     } catch (error) {
       console.log(error);
@@ -239,240 +135,112 @@ export default function DayModal({
   }
 
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-    >
+    <Modal visible={visible} transparent animationType="slide">
       <View style={styles.overlay}>
-        <Pressable
-          style={StyleSheet.absoluteFill}
-          onPress={onClose}
-        />
+        {/* tap outside to dismiss */}
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
         <View style={styles.sheetWrapper}>
-          <BlurView
-            intensity={45}
-            tint="dark"
-            style={styles.sheet}
-          >
+          {/* BlurView as pure background – does NOT control layout */}
+          <BlurView intensity={45} tint="dark" style={StyleSheet.absoluteFill} />
+
+          {/* Regular View drives the flex layout */}
+          <View style={styles.sheetContent}>
+
+            {/* handle bar */}
             <View style={styles.handle} />
 
-            <Pressable
-              style={styles.floatingCloseButton}
-              onPress={onClose}
-            >
-              <X
-                color="#FFFFFF"
-                size={18}
-              />
-            </Pressable>
-
-            <View style={styles.headerRow}>
-              <View>
-                <Text
-                  style={[
-                    styles.title,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "تسجيل إيقاع اليوم"
-                    : "Daily Check-In"}
+            {/* ── HEADER: title + close button inline ── */}
+            <View style={[styles.headerRow, isArabic && styles.headerRowRTL]}>
+              <View style={styles.headerText}>
+                <Text style={[styles.title, isArabic && styles.rtlText]}>
+                  {isArabic ? "تسجيل إيقاع اليوم" : "Daily Check-In"}
                 </Text>
-
-                <Text
-                  style={[
-                    styles.dateText,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
+                <Text style={[styles.dateText, isArabic && styles.rtlText]}>
                   {isArabic
                     ? "تابعي طاقتك ومشاعرك وأعراضك"
                     : "Track your rhythm, energy and symptoms"}
                 </Text>
-
-                <View
-                  style={
-                    styles.selectedDateBadge
-                  }
-                >
-                  <Text
-                    style={
-                      styles.selectedDateBadgeText
-                    }
-                  >
-                    {selectedDate}
-                  </Text>
+                <View style={styles.selectedDateBadge}>
+                  <Text style={styles.selectedDateBadgeText}>{selectedDate}</Text>
                 </View>
               </View>
+
+              <Pressable style={styles.closeButton} onPress={onClose} hitSlop={12}>
+                <X color="#FFFFFF" size={18} />
+              </Pressable>
             </View>
 
+            {/* ── SCROLLABLE CONTENT ── */}
             <ScrollView
-              showsVerticalScrollIndicator={
-                false
-              }
-              contentContainerStyle={{
-                paddingBottom: 180,
-              }}
+              style={styles.scrollArea}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
             >
+              {/* Period toggle */}
               <View style={styles.periodCard}>
-                <View>
-                  <Text
-                    style={[
-                      styles.periodTitle,
-                      isArabic &&
-                        styles.rtlText,
-                    ]}
-                  >
-                    {isArabic
-                      ? "تتبع الدورة"
-                      : "Period Tracking"}
+                <View style={styles.periodCardText}>
+                  <Text style={[styles.periodTitle, isArabic && styles.rtlText]}>
+                    {isArabic ? "تتبع الدورة" : "Period Tracking"}
                   </Text>
-
-                  <Text
-                    style={[
-                      styles.periodSubtitle,
-                      isArabic &&
-                        styles.rtlText,
-                    ]}
-                  >
-                    {isArabic
-                      ? "تحديد هذا اليوم كيوم دورة"
-                      : "Mark this day as period day"}
+                  <Text style={[styles.periodSubtitle, isArabic && styles.rtlText]}>
+                    {isArabic ? "تحديد هذا اليوم كيوم دورة" : "Mark this day as period day"}
                   </Text>
                 </View>
-
                 <Pressable
-                  onPress={() =>
-                    setIsPeriodDay(
-                      !isPeriodDay
-                    )
-                  }
-                  style={[
-                    styles.periodToggle,
-                    isPeriodDay &&
-                      styles.activePeriodToggle,
-                  ]}
+                  onPress={() => setIsPeriodDay(!isPeriodDay)}
+                  style={[styles.periodToggle, isPeriodDay && styles.activePeriodToggle]}
+                  hitSlop={8}
                 >
-                  <View
-                    style={[
-                      styles.periodDot,
-                      isPeriodDay &&
-                        styles.activePeriodDot,
-                    ]}
-                  />
+                  <View style={[styles.periodDot, isPeriodDay && styles.activePeriodDot]} />
                 </Pressable>
               </View>
 
+              {/* Energy */}
               <View style={styles.energyCard}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "مستوى الطاقة"
-                    : "Energy Level"}
+                <Text style={[styles.sectionTitle, isArabic && styles.rtlText]}>
+                  {isArabic ? "مستوى الطاقة" : "Energy Level"}
                 </Text>
-
-                <Text
-                  style={styles.energyValue}
-                >
-                  {energy}%
-                </Text>
-
-                <View
-                  style={styles.energyBar}
-                >
-                  <View
-                    style={[
-                      styles.energyFill,
-                      {
-                        width: `${energy}%`,
-                      },
-                    ]}
-                  />
+                <Text style={styles.energyValue}>{energy}%</Text>
+                <View style={styles.energyBar}>
+                  <View style={[styles.energyFill, { width: `${energy}%` as `${number}%` }]} />
                 </View>
-
-                <View
-                  style={
-                    styles.energyButtons
-                  }
-                >
-                  {[20, 40, 60, 80, 100].map(
-                    (v) => (
-                      <Pressable
-                        key={v}
-                        onPress={() =>
-                          setEnergy(v)
-                        }
-                        style={
-                          styles.energyChip
-                        }
-                      >
-                        <Text
-                          style={
-                            styles.energyChipText
-                          }
-                        >
-                          {v}
-                        </Text>
-                      </Pressable>
-                    )
-                  )}
+                <View style={styles.energyButtons}>
+                  {[20, 40, 60, 80, 100].map((v) => (
+                    <Pressable
+                      key={v}
+                      onPress={() => setEnergy(v)}
+                      style={[styles.energyChip, energy === v && styles.activeEnergyChip]}
+                    >
+                      <Text style={[styles.energyChipText, energy === v && styles.activeEnergyChipText]}>
+                        {v}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
 
+              {/* Mood */}
               <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "المزاج"
-                    : "Mood"}
+                <Text style={[styles.sectionTitle, isArabic && styles.rtlText]}>
+                  {isArabic ? "المزاج" : "Mood"}
                 </Text>
-
                 <View style={styles.moodGrid}>
                   {moods.map((item) => {
                     const Icon = item.icon;
-
                     return (
                       <Pressable
                         key={item.key}
-                        onPress={() =>
-                          setSelectedMood(
-                            item.key
-                          )
-                        }
+                        onPress={() => setSelectedMood(item.key)}
                         style={[
                           styles.moodCard,
-                          selectedMood ===
-                            item.key &&
-                            styles.activeMoodCard,
+                          selectedMood === item.key && styles.activeMoodCard,
                         ]}
                       >
-                        <Icon
-                          color="#C6A7FF"
-                          size={20}
-                        />
-
-                        <Text
-                          style={
-                            styles.moodLabel
-                          }
-                        >
-                          {isArabic
-                            ? item.ar
-                            : item.en}
+                        <Icon color="#C6A7FF" size={20} />
+                        <Text style={styles.moodLabel}>
+                          {isArabic ? item.ar : item.en}
                         </Text>
                       </Pressable>
                     );
@@ -480,159 +248,83 @@ export default function DayModal({
                 </View>
               </View>
 
+              {/* Flow */}
               <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "التدفق"
-                    : "Flow"}
+                <Text style={[styles.sectionTitle, isArabic && styles.rtlText]}>
+                  {isArabic ? "التدفق" : "Flow"}
                 </Text>
-
                 <View style={styles.flowRow}>
                   {flows.map((flow) => (
                     <Pressable
                       key={flow.key}
-                      onPress={() =>
-                        setSelectedFlow(
-                          flow.key as
-                            | "Light"
-                            | "Medium"
-                            | "Heavy"
-                        )
-                      }
-                      style={[
-                        styles.flowChip,
-                        selectedFlow ===
-                          flow.key &&
-                          styles.activeFlowChip,
-                      ]}
+                      onPress={() => setSelectedFlow(flow.key as "Light" | "Medium" | "Heavy")}
+                      style={[styles.flowChip, selectedFlow === flow.key && styles.activeFlowChip]}
                     >
-                      <Droplets
-                        size={14}
-                        color="#FF6FAE"
-                      />
-
-                      <Text
-                        style={
-                          styles.flowText
-                        }
-                      >
-                        {isArabic
-                          ? flow.ar
-                          : flow.en}
+                      <Droplets size={14} color="#FF6FAE" />
+                      <Text style={styles.flowText}>
+                        {isArabic ? flow.ar : flow.en}
                       </Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
+              {/* Symptoms */}
               <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "الأعراض"
-                    : "Symptoms"}
+                <Text style={[styles.sectionTitle, isArabic && styles.rtlText]}>
+                  {isArabic ? "الأعراض" : "Symptoms"}
                 </Text>
-
-                <View
-                  style={
-                    styles.symptomsWrap
-                  }
-                >
-                  {symptoms.map(
-                    (symptom) => (
-                      <Pressable
-                        key={symptom.key}
-                        onPress={() =>
-                          toggleSymptom(
-                            symptom.key
-                          )
-                        }
-                        style={[
-                          styles.symptomChip,
-                          selectedSymptoms.includes(
-                            symptom.key
-                          ) &&
-                            styles.activeSymptomChip,
-                        ]}
-                      >
-                        <Text
-                          style={
-                            styles.symptomText
-                          }
-                        >
-                          {isArabic
-                            ? symptom.ar
-                            : symptom.en}
-                        </Text>
-                      </Pressable>
-                    )
-                  )}
+                <View style={styles.symptomsWrap}>
+                  {symptoms.map((symptom) => (
+                    <Pressable
+                      key={symptom.key}
+                      onPress={() => toggleSymptom(symptom.key)}
+                      style={[
+                        styles.symptomChip,
+                        selectedSymptoms.includes(symptom.key) && styles.activeSymptomChip,
+                      ]}
+                    >
+                      <Text style={styles.symptomText}>
+                        {isArabic ? symptom.ar : symptom.en}
+                      </Text>
+                    </Pressable>
+                  ))}
                 </View>
               </View>
 
+              {/* Notes */}
               <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.sectionTitle,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
-                >
-                  {isArabic
-                    ? "ملاحظات"
-                    : "Notes"}
+                <Text style={[styles.sectionTitle, isArabic && styles.rtlText]}>
+                  {isArabic ? "ملاحظات" : "Notes"}
                 </Text>
-
                 <TextInput
                   value={notes}
                   onChangeText={setNotes}
-                  placeholder={
-                    isArabic
-                      ? "كيف كان شعورك اليوم؟"
-                      : "How did you feel today?"
-                  }
+                  placeholder={isArabic ? "كيف كان شعورك اليوم؟" : "How did you feel today?"}
                   placeholderTextColor="rgba(255,255,255,0.35)"
                   multiline
-                  style={[
-                    styles.notesInput,
-                    isArabic &&
-                      styles.rtlText,
-                  ]}
+                  style={[styles.notesInput, isArabic && styles.rtlText]}
                 />
               </View>
-
-              <Pressable
-                style={styles.saveFloating}
-                onPress={handleSaveCheckIn}
-                disabled={saving}
-              >
-                <Text
-                  style={
-                    styles.saveButtonText
-                  }
-                >
-                  {saving
-                    ? isArabic
-                      ? "جاري الحفظ..."
-                      : "Saving..."
-                    : isArabic
-                    ? "حفظ التتبع"
-                    : "Save Check-In"}
-                </Text>
-              </Pressable>
             </ScrollView>
-          </BlurView>
+
+            {/* ── SAVE BUTTON – always visible, outside ScrollView ── */}
+            <Pressable
+              style={[
+                styles.saveButton,
+                { marginBottom: Math.max(insets.bottom + 8, 20) },
+              ]}
+              onPress={handleSaveCheckIn}
+              disabled={saving}
+            >
+              <Text style={styles.saveButtonText}>
+                {saving
+                  ? isArabic ? "جاري الحفظ..." : "Saving..."
+                  : isArabic ? "حفظ التتبع" : "Save Check-In"}
+              </Text>
+            </Pressable>
+
+          </View>
         </View>
       </View>
     </Modal>
@@ -645,47 +337,35 @@ const styles = StyleSheet.create({
     writingDirection: "rtl",
   },
 
-  floatingCloseButton: {
-    position: "absolute",
-    top: 18,
-    right: 18,
-    width: 40,
-    height: 40,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.08)",
-    borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.06)",
-    zIndex: 999,
-  },
-
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
-    backgroundColor:
-      "rgba(0,0,0,0.45)",
+    backgroundColor: "rgba(0,0,0,0.50)",
   },
 
   sheetWrapper: {
     width: "100%",
+    height: "84%",
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
+    overflow: "hidden",
   },
 
   sheet: {
-    paddingTop: 80,
+    ...StyleSheet.absoluteFillObject,
     borderTopLeftRadius: 34,
     borderTopRightRadius: 34,
+  },
+
+  sheetContent: {
+    flex: 1,
+    flexDirection: "column",
     paddingHorizontal: 22,
-    paddingBottom: 40,
-    overflow: "hidden",
+    paddingTop: 16,
+    borderTopLeftRadius: 34,
+    borderTopRightRadius: 34,
     borderWidth: 1,
-    borderColor:
-      "rgba(255,255,255,0.08)",
-    backgroundColor:
-      "rgba(18,18,22,0.88)",
-    minHeight: "72%",
+    borderColor: "rgba(255,255,255,0.08)",
   },
 
   handle: {
@@ -694,25 +374,37 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     alignSelf: "center",
     marginBottom: 20,
-    backgroundColor:
-      "rgba(255,255,255,0.18)",
+    backgroundColor: "rgba(255,255,255,0.18)",
   },
 
+  /* header */
   headerRow: {
-    marginBottom: 28,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: 24,
+    gap: 12,
+  },
+
+  headerRowRTL: {
+    flexDirection: "row-reverse",
+  },
+
+  headerText: {
+    flex: 1,
   },
 
   title: {
     color: "#FFFFFF",
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: "700",
   },
 
   dateText: {
     marginTop: 4,
-    color:
-      "rgba(255,255,255,0.5)",
+    color: "rgba(255,255,255,0.5)",
     fontSize: 14,
+    lineHeight: 20,
   },
 
   selectedDateBadge: {
@@ -721,8 +413,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 999,
-    backgroundColor:
-      "rgba(198,167,255,0.12)",
+    backgroundColor: "rgba(198,167,255,0.12)",
   },
 
   selectedDateBadgeText: {
@@ -731,108 +422,41 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
-  section: {
-    marginBottom: 28,
-  },
-
-  sectionTitle: {
-    color: "#FFFFFF",
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 14,
-  },
-
-  moodGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 12,
-  },
-
-  moodCard: {
-    width: "47%",
-    borderRadius: 22,
-    paddingVertical: 18,
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 999,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-  },
-
-  activeMoodCard: {
-    borderColor: "#C6A7FF",
-    backgroundColor:
-      "rgba(198,167,255,0.16)",
+    backgroundColor: "rgba(255,255,255,0.10)",
     borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
+    flexShrink: 0,
   },
 
-  moodLabel: {
-    marginTop: 8,
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+  /* scroll */
+  scrollArea: {
+    flex: 1,
   },
 
-  flowRow: {
-    flexDirection: "row",
-    gap: 10,
+  scrollContent: {
+    paddingBottom: 16,
   },
 
-  flowChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderRadius: 18,
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-  },
-
-  activeFlowChip: {
-    borderColor: "#FF6FAE",
-    backgroundColor:
-      "rgba(255,111,174,0.12)",
-    borderWidth: 1,
-  },
-
-  flowText: {
-    color: "#FFFFFF",
-  },
-
-  symptomsWrap: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-  },
-
-  symptomChip: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 16,
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
-  },
-
-  activeSymptomChip: {
-    borderColor: "#C6A7FF",
-    backgroundColor:
-      "rgba(198,167,255,0.14)",
-    borderWidth: 1,
-  },
-
-  symptomText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-  },
-
+  /* period toggle */
   periodCard: {
     borderRadius: 24,
     padding: 18,
     marginBottom: 24,
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+
+  periodCardText: {
+    flex: 1,
+    marginRight: 16,
   },
 
   periodTitle: {
@@ -843,8 +467,7 @@ const styles = StyleSheet.create({
 
   periodSubtitle: {
     marginTop: 4,
-    color:
-      "rgba(255,255,255,0.45)",
+    color: "rgba(255,255,255,0.45)",
     fontSize: 13,
   },
 
@@ -854,8 +477,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     justifyContent: "center",
     paddingHorizontal: 4,
-    backgroundColor:
-      "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.12)",
   },
 
   activePeriodToggle: {
@@ -873,12 +495,12 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
   },
 
+  /* energy */
   energyCard: {
     borderRadius: 24,
     padding: 20,
     marginBottom: 26,
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
 
   energyValue: {
@@ -892,8 +514,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
     overflow: "hidden",
-    backgroundColor:
-      "rgba(255,255,255,0.08)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
 
   energyFill: {
@@ -909,45 +530,152 @@ const styles = StyleSheet.create({
   },
 
   energyChip: {
-    width: 48,
-    height: 36,
+    width: 52,
+    height: 38,
     borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor:
-      "rgba(255,255,255,0.06)",
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+
+  activeEnergyChip: {
+    backgroundColor: "rgba(198,167,255,0.22)",
+    borderWidth: 1,
+    borderColor: "#C6A7FF",
   },
 
   energyChipText: {
-    color: "#FFFFFF",
+    color: "rgba(255,255,255,0.65)",
     fontWeight: "700",
+    fontSize: 13,
   },
 
+  activeEnergyChipText: {
+    color: "#FFFFFF",
+  },
+
+  /* sections */
+  section: {
+    marginBottom: 28,
+  },
+
+  sectionTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 14,
+  },
+
+  /* mood */
+  moodGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 12,
+  },
+
+  moodCard: {
+    width: "47%",
+    borderRadius: 22,
+    paddingVertical: 20,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+
+  activeMoodCard: {
+    borderColor: "#C6A7FF",
+    backgroundColor: "rgba(198,167,255,0.16)",
+    borderWidth: 1,
+  },
+
+  moodLabel: {
+    marginTop: 8,
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+
+  /* flow */
+  flowRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  flowChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 18,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+
+  activeFlowChip: {
+    borderColor: "#FF6FAE",
+    backgroundColor: "rgba(255,111,174,0.12)",
+    borderWidth: 1,
+  },
+
+  flowText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+  },
+
+  /* symptoms */
+  symptomsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+  },
+
+  symptomChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+
+  activeSymptomChip: {
+    borderColor: "#C6A7FF",
+    backgroundColor: "rgba(198,167,255,0.14)",
+    borderWidth: 1,
+  },
+
+  symptomText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+  },
+
+  /* notes */
   notesInput: {
-    minHeight: 120,
+    minHeight: 110,
     borderRadius: 22,
     padding: 18,
     textAlignVertical: "top",
     color: "#FFFFFF",
-    backgroundColor:
-      "rgba(255,255,255,0.05)",
+    fontSize: 15,
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
 
-  saveFloating: {
-    position: "absolute",
-    bottom: 34,
-    left: 24,
-    right: 24,
+  /* save button – always visible below scroll */
+  saveButton: {
+    marginTop: 12,
     height: 58,
     borderRadius: 999,
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: "#C6A7FF",
+    shadowColor: "#C6A7FF",
+    shadowOpacity: 0.38,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 10,
   },
 
   saveButtonText: {
     color: "#111111",
-    fontSize: 15,
-    fontWeight: "800",
+    fontSize: 16,
+    fontWeight: "900",
   },
 });

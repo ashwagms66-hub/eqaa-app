@@ -2,11 +2,11 @@ import { useLanguage } from "@/src/context/LanguageContext";
 import { Tabs } from "expo-router";
 
 import {
-  BarChart3,
   CalendarDays,
   Dumbbell,
   Ellipsis,
   Home,
+  Zap,
 } from "lucide-react-native";
 
 import { I18nManager } from "react-native";
@@ -101,6 +101,27 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="fasting"
+        options={{
+          title:
+            language === "ar"
+              ? "الصيام"
+              : "Fasting",
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <Zap
+              color={color}
+              size={size}
+              strokeWidth={2.4}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="workout"
         options={{
           title:
@@ -113,27 +134,6 @@ export default function TabLayout() {
             size,
           }) => (
             <Dumbbell
-              color={color}
-              size={size}
-              strokeWidth={2.4}
-            />
-          ),
-        }}
-      />
-
-      <Tabs.Screen
-        name="reports"
-        options={{
-          title:
-            language === "ar"
-              ? "التقارير"
-              : "Reports",
-
-          tabBarIcon: ({
-            color,
-            size,
-          }) => (
-            <BarChart3
               color={color}
               size={size}
               strokeWidth={2.4}

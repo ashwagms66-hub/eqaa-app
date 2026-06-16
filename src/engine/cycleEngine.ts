@@ -15,44 +15,54 @@ export interface Phase {
 
 export const PHASES: Phase[] = [
   {
-    key: "power",
+    key: "menstrual",
     startDay: 1,
+    endDay: 5,
+    icon: "❤️",
+    title: "Menstrual",
+    phaseArabic: "مرحلة الدورة",
+    description: "Rest and gentle nourishment support your body in renewal.",
+    descriptionArabic: "مرحلة التجديد. الراحة والتغذية اللطيفة تدعمكِ الآن.",
+  },
+  {
+    key: "power",
+    startDay: 6,
     endDay: 10,
-    icon: "☀️",
-    title: "Power",
-    phaseArabic: "الطاقة",
-    description: "High energy and motivation phase.",
-    descriptionArabic: "مرحلة الطاقة العالية والتحفيز.",
+    icon: "🌱",
+    title: "Renewal",
+    phaseArabic: "مرحلة التجديد",
+    description: "Your energy is rising. Gradual renewal and building.",
+    descriptionArabic: "طاقتك تبدأ بالصعود — مرحلة التجديد التدريجي.",
   },
   {
     key: "manifestation",
     startDay: 11,
     endDay: 15,
-    icon: "✨",
-    title: "Manifestation",
-    phaseArabic: "التجلي",
-    description: "Focus on clarity and communication.",
-    descriptionArabic: "التركيز على الوضوح والتواصل.",
+    icon: "⚡",
+    title: "Power",
+    phaseArabic: "مرحلة القوة",
+    description: "Peak energy and clarity. Best time for decisions and achievements.",
+    descriptionArabic: "ذروة الطاقة والوضوح — أفضل وقت للإنجاز.",
   },
   {
     key: "secondPower",
     startDay: 16,
     endDay: 19,
-    icon: "🌙",
-    title: "Second Power",
-    phaseArabic: "الطاقة الثانية",
-    description: "Balance and calmness phase.",
-    descriptionArabic: "مرحلة التوازن والهدوء.",
+    icon: "✨",
+    title: "Clarity",
+    phaseArabic: "مرحلة الوضوح",
+    description: "Mental clarity and deeper focus.",
+    descriptionArabic: "وضوح ذهني وتركيز أعمق.",
   },
   {
     key: "reset",
     startDay: 20,
     endDay: 28,
-    icon: "🌊",
-    title: "Reset",
-    phaseArabic: "إعادة التعيين",
-    description: "Rest and recovery phase.",
-    descriptionArabic: "مرحلة الراحة والتعافي.",
+    icon: "🌙",
+    title: "Calm",
+    phaseArabic: "مرحلة الهدوء",
+    description: "Rest, calm and gentle nourishment support you best.",
+    descriptionArabic: "الهدوء والراحة والتغذية اللطيفة تدعمكِ الآن.",
   },
 ];
 
@@ -60,28 +70,16 @@ export function getCycleDay(
   lastPeriodDate: string,
   cycleLength = 28
 ) {
-  if (!lastPeriodDate) {
-    return 1;
-  }
-
-  const today = new Date();
-
-  const lastPeriod = new Date(
-    lastPeriodDate
-  );
-
-  const diffTime =
-    today.getTime() -
-    lastPeriod.getTime();
-
+  if (!lastPeriodDate) return 1;
+  // Parse both dates at LOCAL midnight to avoid UTC-offset errors in UTC+ timezones
+  const [y, m, d] = lastPeriodDate.split("-").map(Number);
+  const startLocal = new Date(y, m - 1, d);
+  const todayLocal = new Date();
+  todayLocal.setHours(0, 0, 0, 0);
   const diffDays = Math.floor(
-    diffTime /
-      (1000 * 60 * 60 * 24)
+    (todayLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24)
   );
-
-  return (
-    (diffDays % cycleLength) + 1
-  );
+  return (diffDays % cycleLength) + 1;
 }
 
 export function getCurrentPhase(
@@ -134,35 +132,19 @@ export function getPhaseTheme(
     Math.min(cycleDay, 28)
   );
 
+  if (safeDay <= 5) {
+    return { glow: "#FF6FAE", accent: "#FFB3D1", icon: "❤️" };
+  }
   if (safeDay <= 10) {
-    return {
-      glow: "#F6C453",
-      accent: "#FFD86B",
-      icon: "☀️",
-    };
+    return { glow: "#5BBB85", accent: "#7ECFA0", icon: "🌱" };
   }
-
   if (safeDay <= 15) {
-    return {
-      glow: "#FFD6C2",
-      accent: "#FFE5D8",
-      icon: "✨",
-    };
+    return { glow: "#E9CF74", accent: "#FFD86B", icon: "⚡" };
   }
-
   if (safeDay <= 19) {
-    return {
-      glow: "#C7A6FF",
-      accent: "#E1D1FF",
-      icon: "🌙",
-    };
+    return { glow: "#C7A6FF", accent: "#E1D1FF", icon: "✨" };
   }
-
-  return {
-    glow: "#8FD3FF",
-    accent: "#CBE8FF",
-    icon: "🌊",
-  };
+  return { glow: "#8FD3FF", accent: "#CBE8FF", icon: "🌙" };
 }
 
 export function getCycleInsight(
@@ -173,6 +155,12 @@ export function getCycleInsight(
     1,
     Math.min(cycleDay, 28)
   );
+
+  if (safeDay <= 5) {
+    return language === "ar"
+      ? "جسمكِ في مرحلة التجديد. الراحة والتغذية الداعمة أهم شيء الآن."
+      : "Your body is in renewal. Rest and supportive nourishment come first.";
+  }
 
   if (safeDay <= 10) {
     return language === "ar"

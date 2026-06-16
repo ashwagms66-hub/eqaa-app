@@ -6,6 +6,7 @@ import React, {
     useEffect,
     useRef,
 } from "react";
+import { saveOnboardingComplete } from "@/src/storage/onboardingStorage";
 import {
     Animated,
     StyleSheet,
@@ -56,7 +57,8 @@ export default function SyncScreen() {
       ])
     ).start();
 
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
+      await saveOnboardingComplete();
       router.replace("/(tabs)");
     }, 4200);
 

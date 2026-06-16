@@ -6,6 +6,7 @@ const DARK_MODE_KEY = "@eqaa_dark_mode";
 const GOALS_KEY = "@eqaa_goals";
 const HEIGHT_KEY = "@eqaa_height";
 const WEIGHT_KEY = "@eqaa_weight";
+const GOAL_WEIGHT_KEY = "@eqaa_goal_weight";
 const AGE_KEY = "@eqaa_age";
 const ACTIVITY_KEY = "@eqaa_activity";
 const CALORIES_KEY = "@eqaa_calories";
@@ -123,6 +124,15 @@ export async function getWeight() {
     );
 
   return value ? Number(value) : 68;
+}
+
+export async function saveGoalWeight(value: number) {
+  await AsyncStorage.setItem(GOAL_WEIGHT_KEY, value.toString());
+}
+
+export async function getGoalWeight() {
+  const value = await AsyncStorage.getItem(GOAL_WEIGHT_KEY);
+  return value ? Number(value) : 60;
 }
 
 export async function saveAge(
