@@ -105,7 +105,7 @@ export default function CalendarScreen() {
       savedLifeMode === "pregnancy" ||
       savedLifeMode === "postpartum"
     ) {
-      setLifeMode(savedLifeMode as any);
+      setLifeMode(savedLifeMode as "regular" | "pcos" | "moon" | "pregnancy" | "postpartum");
     }
   }, []);
 
@@ -325,7 +325,7 @@ export default function CalendarScreen() {
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingBottom: Math.max(insets.bottom + 40, 60) },
+          { paddingTop: insets.top + 16, paddingBottom: Math.max(insets.bottom + 40, 60) },
         ]}
         showsVerticalScrollIndicator={false}
       >
@@ -705,7 +705,7 @@ export default function CalendarScreen() {
             colors={["#06070B", "#15162A", "#241B3D"]}
             style={styles.fullModalContainer}
           >
-            <View style={styles.fullModalHeader}>
+            <View style={[styles.fullModalHeader, { paddingTop: insets.top + 16 }]}>
               <View>
                 <Text style={styles.fullModalLabel}>
                   {isArabic ? "الدورة" : "Cycle"}
@@ -928,7 +928,6 @@ const styles = StyleSheet.create({
   },
 
   content: {
-    paddingTop: 90,
     paddingHorizontal: 24,
   },
 
@@ -1327,7 +1326,6 @@ const styles = StyleSheet.create({
   },
 
   fullModalHeader: {
-    paddingTop: 84,
     paddingHorizontal: 24,
     flexDirection: "row",
     alignItems: "center",

@@ -7,7 +7,7 @@ import React, {
 } from "react";
 
 import {
-  Alert,
+  ActivityIndicator,
   Animated,
   ScrollView,
   StyleSheet,
@@ -28,8 +28,15 @@ import {
 import { StatusBar } from "expo-status-bar";
 import * as Haptics from "expo-haptics";
 
-import { Heart, Zap } from "lucide-react-native";
+import { Heart, Sparkles, Zap } from "lucide-react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import { getFastingPhase, FASTING_PHASES } from "@/src/data/fastingData";
+
+import { useHealthData } from "@/src/services/health/useHealthData";
+import { formatLastSynced } from "@/src/services/health/healthService";
+import { calculateEqaaScore } from "@/src/services/scoring/scoringService";
+import { getWorkoutRecommendation } from "@/src/services/recommendations/recommendationService";
 
 import { useLanguage } from "@/src/context/LanguageContext";
 
@@ -69,6 +76,29 @@ import {
   getName,
 } from "@/src/storage/profileStorage";
 
+import { getCycleLength } from "@/src/storage/cycleStorage";
+
+const PERIOD_DISMISS_KEY = "@eqaa_period_prompt_dismissed";
+
+async function wasDismissedToday(): Promise<boolean> {
+  try {
+    const val = await AsyncStorage.getItem(PERIOD_DISMISS_KEY);
+    if (!val) return false;
+    return val === new Date().toISOString().split("T")[0];
+  } catch {
+    return false;
+  }
+}
+
+async function dismissPeriodPromptToday(): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      PERIOD_DISMISS_KEY,
+      new Date().toISOString().split("T")[0]
+    );
+  } catch {}
+}
+
 const moods = [
   {
     key: "calm",
@@ -100,6 +130,9 @@ export default function HomeScreen() {
   const { language } = useLanguage();
 
   const isRTL = language === "ar";
+
+  const { metrics, syncing, permissionStatus, isAvailable, requestAndSync, sync } =
+    useHealthData();
 
   const [cycleDay, setCycleDay] = useState(1);
 
@@ -149,7 +182,10 @@ export default function HomeScreen() {
   const [selectedMood, setSelectedMood] =
     useState("calm");
 
-  const [periodSaved, setPeriodSaved] =
+  const [periodPredicted, setPeriodPredicted] =
+    useState(false);
+
+  const [periodCardDismissed, setPeriodCardDismissed] =
     useState(false);
 
   const [todayCheckIn, setTodayCheckIn] =
@@ -195,6 +231,22 @@ export default function HomeScreen() {
         getCycleDay(lastPeriod);
 
       setCycleDay(calculatedDay);
+
+      // Compute whether today is on or past the predicted period date
+      const cycleLen = await getCycleLength();
+      const [ly, lm, ld] = lastPeriod.split("-").map(Number);
+      const periodStart = new Date(ly, lm - 1, ld);
+      const predicted = new Date(periodStart);
+      predicted.setDate(predicted.getDate() + cycleLen);
+      const todayDate = new Date();
+      todayDate.setHours(0, 0, 0, 0);
+      const isPredicted = todayDate >= predicted && calculatedDay !== 1;
+      const dismissed = await wasDismissedToday();
+      const lifeModeSaved = await getLifeMode();
+      const noTracking =
+        lifeModeSaved === "pregnancy" || lifeModeSaved === "postpartum";
+      setPeriodPredicted(isPredicted && !noTracking);
+      setPeriodCardDismissed(dismissed);
     }
 
     if (savedSleep !== null) {
@@ -247,27 +299,16 @@ export default function HomeScreen() {
     }, [loadData])
   );
 
-  const handlePeriodStart = () => {
-    Alert.alert(
-      isRTL ? "تأكيد" : "Confirm",
-      isRTL
-        ? "هل أنتِ متأكدة أن الدورة بدأت اليوم؟"
-        : "Are you sure your period started today?",
-      [
-        { text: isRTL ? "إلغاء" : "Cancel", style: "cancel" },
-        {
-          text: isRTL ? "نعم، بدأت" : "Yes, it started",
-          onPress: async () => {
-            const today = new Date().toISOString().split("T")[0];
-            await saveLastPeriod(today);
-            await loadData();
-            setPeriodSaved(true);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            setTimeout(() => setPeriodSaved(false), 3200);
-          },
-        },
-      ]
-    );
+  const handlePeriodConfirm = async () => {
+    const today = new Date().toISOString().split("T")[0];
+    await saveLastPeriod(today);
+    await loadData();
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+
+  const handlePeriodNotYet = async () => {
+    await dismissPeriodPromptToday();
+    setPeriodCardDismissed(true);
   };
 
   useEffect(() => {
@@ -436,6 +477,23 @@ export default function HomeScreen() {
 
   const fastPhaseKey = useMemo(() => getFastingPhase(cycleDay), [cycleDay]);
   const fp = useMemo(() => FASTING_PHASES[fastPhaseKey], [fastPhaseKey]);
+
+  const eqaaScore = useMemo(
+    () =>
+      calculateEqaaScore({
+        sleepHours: metrics?.sleepHours ?? sleepHours,
+        steps: metrics?.steps ?? null,
+        activeEnergyBurned: metrics?.activeEnergyBurned ?? null,
+        cycleDay,
+        symptoms: todayCheckIn?.symptoms ?? [],
+        hrv: metrics?.hrv ?? null,
+        restingHeartRate: metrics?.restingHeartRate ?? null,
+        energyLevel: energyLevel,
+      }),
+    [metrics, cycleDay, sleepHours, energyLevel, todayCheckIn]
+  );
+
+  const workoutRec = useMemo(() => getWorkoutRecommendation(cycleDay), [cycleDay]);
 
   const dailyInsight = useMemo(() => {
     const high = energyLevel >= 70;
@@ -693,43 +751,174 @@ export default function HomeScreen() {
             </Text>
           </View>
 
-          {/* ── Period Start Quick Action ── */}
+          {/* ── Eqa'a Score Card ── */}
           <TouchableOpacity
-            activeOpacity={0.86}
-            onPress={handlePeriodStart}
-            style={styles.periodBtn}
+            activeOpacity={0.88}
+            onPress={() => router.push("/insights" as any)}
+            style={[styles.scoreHomeCard, { borderColor: `${eqaaScore.color}30` }]}
           >
-            <LinearGradient
-              colors={["rgba(244,63,94,0.26)", "rgba(180,30,60,0.13)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.periodBtnGrad}
-            >
-              <View style={[styles.periodBtnInner, isRTL && { flexDirection: "row-reverse" }]}>
-                <View style={styles.periodDot} />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.periodBtnText, isRTL && { textAlign: "right" }]}>
-                    {isRTL ? "نزلت الدورة اليوم" : "Period Started Today"}
+            <View style={[styles.scoreHomeRow, isRTL && { flexDirection: "row-reverse" }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.scoreHomeLabel, isRTL && { textAlign: "right" }]}>
+                  {isRTL ? "نقاط إيقاع اليومية" : "EQAA DAILY SCORE"}
+                </Text>
+                <View style={[styles.scoreHomeNumRow, isRTL && { flexDirection: "row-reverse" }]}>
+                  <Text style={[styles.scoreHomeNum, { color: eqaaScore.color }]}>
+                    {eqaaScore.total}
                   </Text>
-                  <Text style={[styles.periodBtnSub, isRTL && { textAlign: "right" }]}>
-                    {isRTL
-                      ? "اضغطي هنا لإعادة ضبط الدورة"
-                      : "Tap to reset cycle"}
-                  </Text>
+                  <View style={styles.scoreHomeLabelPill}>
+                    <Text style={[styles.scoreHomeLabelText, { color: eqaaScore.color }]}>
+                      {isRTL ? eqaaScore.labelAr : eqaaScore.label}
+                    </Text>
+                  </View>
                 </View>
-                <Text style={styles.periodBtnArrow}>
-                  {isRTL ? "←" : "→"}
+                <Text style={[styles.scoreHomeDesc, isRTL && { textAlign: "right" }]}>
+                  {isRTL ? eqaaScore.descriptionAr : eqaaScore.description}
                 </Text>
               </View>
+              <View
+                style={[
+                  styles.scoreHomeBubble,
+                  { backgroundColor: `${eqaaScore.color}18`, borderColor: `${eqaaScore.color}50` },
+                ]}
+              >
+                <Text style={[styles.scoreHomeBubbleNum, { color: eqaaScore.color }]}>
+                  {eqaaScore.total}
+                </Text>
+              </View>
+            </View>
+            <Text style={[styles.scoreHomeTap, isRTL && { textAlign: "right" }]}>
+              {isRTL ? "اضغطي لرؤية التفاصيل ←" : "Tap for full breakdown →"}
+            </Text>
+          </TouchableOpacity>
+
+          {/* ── Health Summary Card ── */}
+          <View style={styles.healthHomeCard}>
+            <View style={[styles.healthHomeHeader, isRTL && { flexDirection: "row-reverse" }]}>
+              <Text style={styles.healthHomeLabel}>
+                {isRTL ? "ملخص الصحة" : "HEALTH SUMMARY"}
+              </Text>
+              {isAvailable && (
+                <TouchableOpacity
+                  onPress={permissionStatus === "granted" ? sync : requestAndSync}
+                  style={styles.healthSyncBtn}
+                  disabled={syncing}
+                >
+                  {syncing ? (
+                    <ActivityIndicator size="small" color="#C6A7FF" />
+                  ) : (
+                    <Text style={styles.healthSyncText}>
+                      {isRTL ? "مزامنة" : "Sync"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {permissionStatus !== "granted" && isAvailable ? (
+              <TouchableOpacity
+                style={styles.healthConnectRow}
+                onPress={requestAndSync}
+                activeOpacity={0.86}
+              >
+                <Text style={styles.healthConnectIcon}>❤️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.healthConnectTitle, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? "ربط Apple Health" : "Connect Apple Health"}
+                  </Text>
+                  <Text style={[styles.healthConnectSub, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? "اضغطي للمتابعة" : "Tap to get started"}
+                  </Text>
+                </View>
+                <Text style={{ color: "#C6A7FF", fontSize: 16 }}>{isRTL ? "←" : "→"}</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <View style={[styles.healthMetricsRow, isRTL && { flexDirection: "row-reverse" }]}>
+                  <MiniMetric icon="👟" value={metrics?.steps?.toLocaleString() ?? "—"} label={isRTL ? "خطوة" : "steps"} />
+                  <MiniMetric icon="🌙" value={metrics?.sleepHours != null ? `${metrics.sleepHours}h` : "—"} label={isRTL ? "نوم" : "sleep"} />
+                  <MiniMetric icon="❤️" value={metrics?.heartRate != null ? `${metrics.heartRate}` : "—"} label={isRTL ? "نبض" : "bpm"} />
+                  <MiniMetric icon="📉" value={metrics?.hrv != null ? `${metrics.hrv}` : "—"} label="HRV ms" />
+                </View>
+                <Text style={[styles.healthSyncedAt, isRTL && { textAlign: "right" }]}>
+                  {formatLastSynced(metrics?.lastSynced ?? null, language)}
+                </Text>
+              </>
+            )}
+          </View>
+
+          {/* ── Fitness Recommendation Card ── */}
+          <TouchableOpacity
+            activeOpacity={0.88}
+            onPress={() => router.push("/(tabs)/workout" as any)}
+            style={[styles.recCard, { borderColor: `${workoutRec.accentColor}28` }]}
+          >
+            <LinearGradient
+              colors={[`${workoutRec.accentColor}14`, `${workoutRec.accentColor}06`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.recGrad}
+            >
+              <View style={[styles.recHeader, isRTL && { flexDirection: "row-reverse" }]}>
+                <Text style={styles.recIcon}>{workoutRec.icon}</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.recSectionLabel, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? "المدرب الذكي" : "AI COACH"}
+                  </Text>
+                  <Text style={[styles.recTitle, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? workoutRec.titleAr : workoutRec.title}
+                  </Text>
+                  <Text style={[styles.recSub, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? workoutRec.subtitleAr : workoutRec.subtitle}
+                  </Text>
+                </View>
+              </View>
+              <View style={[styles.recWorkoutsRow, isRTL && { flexDirection: "row-reverse" }]}>
+                {workoutRec.workouts.slice(0, 3).map((w, i) => (
+                  <View key={i} style={[styles.recWorkoutChip, { borderColor: `${workoutRec.accentColor}40` }]}>
+                    <Text style={[styles.recWorkoutText, { color: workoutRec.accentColor }]}>
+                      {isRTL ? w.nameAr : w.name}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+              <Text style={[styles.recTapHint, isRTL && { textAlign: "right" }]}>
+                {isRTL ? "اضغطي لفتح المدرب الذكي ←" : "Tap to open AI Coach →"}
+              </Text>
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* ── Success banner ── */}
-          {periodSaved && (
-            <View style={styles.successBanner}>
-              <Text style={styles.successText}>
-                {isRTL ? "✓  تم تحديث الدورة بنجاح" : "✓  Cycle updated successfully"}
-              </Text>
+          {/* ── Smart Period Card — only when predicted/overdue ── */}
+          {periodPredicted && !periodCardDismissed && (
+            <View style={styles.periodSmartCard}>
+              <View style={[styles.periodSmartTop, isRTL && { flexDirection: "row-reverse" }]}>
+                <View style={styles.periodSmartDot} />
+                <Text style={[styles.periodSmartTitle, isRTL && { textAlign: "right" }]}>
+                  {isRTL
+                    ? "🩸 هل بدأت دورتك اليوم؟"
+                    : "🩸 Has your period started today?"}
+                </Text>
+              </View>
+              <View style={[styles.periodSmartButtons, isRTL && { flexDirection: "row-reverse" }]}>
+                <TouchableOpacity
+                  activeOpacity={0.84}
+                  onPress={handlePeriodConfirm}
+                  style={styles.periodSmartYes}
+                >
+                  <Text style={styles.periodSmartYesText}>
+                    {isRTL ? "نعم، بدأت" : "Yes, it started"}
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.84}
+                  onPress={handlePeriodNotYet}
+                  style={styles.periodSmartNo}
+                >
+                  <Text style={styles.periodSmartNoText}>
+                    {isRTL ? "لم تبدأ بعد" : "Not yet"}
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -895,6 +1084,38 @@ export default function HomeScreen() {
     </LinearGradient>
   );
 }
+
+function MiniMetric({
+  icon,
+  value,
+  label,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+}) {
+  return (
+    <View style={miniStyles.tile}>
+      <Text style={miniStyles.icon}>{icon}</Text>
+      <Text style={miniStyles.value}>{value}</Text>
+      <Text style={miniStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const miniStyles = StyleSheet.create({
+  tile: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 16,
+    padding: 10,
+    gap: 3,
+  },
+  icon: { fontSize: 16 },
+  value: { color: "#FFFFFF", fontSize: 14, fontWeight: "800", textAlign: "center" },
+  label: { color: "rgba(255,255,255,0.45)", fontSize: 10, fontWeight: "600" },
+});
 
 const styles = StyleSheet.create({
   container: {
@@ -1217,78 +1438,75 @@ const styles = StyleSheet.create({
     fontWeight: "800",
   },
 
-  // ── Period Start Quick Action ──────────────────────────────────────
-  periodBtn: {
+  // ── Smart Period Card ──────────────────────────────────────────────
+  periodSmartCard: {
     marginTop: 20,
     borderRadius: 26,
-    overflow: "hidden",
+    padding: 20,
+    backgroundColor: "rgba(244,63,94,0.10)",
     borderWidth: 1,
-    borderColor: "rgba(244,63,94,0.28)",
-    shadowColor: "#F43F5E",
-    shadowOpacity: 0.22,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: "rgba(244,63,94,0.24)",
   },
 
-  periodBtnGrad: {
-    paddingVertical: 20,
-    paddingHorizontal: 22,
-  },
-
-  periodBtnInner: {
+  periodSmartTop: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 16,
+    gap: 10,
+    marginBottom: 16,
   },
 
-  periodDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
+  periodSmartDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
     backgroundColor: "#F43F5E",
     shadowColor: "#F43F5E",
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
   },
 
-  periodBtnText: {
+  periodSmartTitle: {
     color: "#FFFFFF",
-    fontSize: 18,
-    fontWeight: "800",
-    letterSpacing: -0.3,
-    marginBottom: 4,
-  },
-
-  periodBtnSub: {
-    color: "rgba(255,255,255,0.52)",
-    fontSize: 13,
-    fontWeight: "500",
-  },
-
-  periodBtnArrow: {
-    color: "rgba(244,63,94,0.70)",
-    fontSize: 20,
+    fontSize: 16,
     fontWeight: "700",
+    flex: 1,
+    lineHeight: 24,
   },
 
-  // ── Success banner ─────────────────────────────────────────────────
-  successBanner: {
-    marginTop: 12,
+  periodSmartButtons: {
+    flexDirection: "row",
+    gap: 10,
+  },
+
+  periodSmartYes: {
+    flex: 1,
+    paddingVertical: 13,
     borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    backgroundColor: "rgba(52,211,153,0.14)",
-    borderWidth: 1,
-    borderColor: "rgba(52,211,153,0.30)",
+    backgroundColor: "#F43F5E",
     alignItems: "center",
   },
 
-  successText: {
-    color: "#34D399",
-    fontSize: 15,
+  periodSmartYesText: {
+    color: "#FFFFFF",
+    fontSize: 14,
     fontWeight: "800",
-    letterSpacing: 0.2,
+  },
+
+  periodSmartNo: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.07)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.12)",
+    alignItems: "center",
+  },
+
+  periodSmartNoText: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // ── Today's Check-In card ───────────────────────────────────────────
@@ -1361,5 +1579,222 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
     lineHeight: 22,
+  },
+
+  // ── Eqa'a Score Home Card ─────────────────────────────────────────────
+  scoreHomeCard: {
+    marginTop: 20,
+    borderRadius: 28,
+    padding: 22,
+    backgroundColor: "rgba(255,255,255,0.06)",
+    borderWidth: 1,
+  },
+
+  scoreHomeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 16,
+  },
+
+  scoreHomeLabel: {
+    color: "#C6A7FF",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+    marginBottom: 6,
+  },
+
+  scoreHomeNumRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+
+  scoreHomeNum: {
+    fontSize: 44,
+    fontWeight: "900",
+  },
+
+  scoreHomeLabelPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.07)",
+  },
+
+  scoreHomeLabelText: {
+    fontSize: 13,
+    fontWeight: "800",
+  },
+
+  scoreHomeDesc: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    marginTop: 6,
+    lineHeight: 20,
+  },
+
+  scoreHomeBubble: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+  },
+
+  scoreHomeBubbleNum: {
+    fontSize: 22,
+    fontWeight: "900",
+  },
+
+  scoreHomeTap: {
+    color: "rgba(255,255,255,0.30)",
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 12,
+  },
+
+  // ── Health Summary Home Card ──────────────────────────────────────────
+  healthHomeCard: {
+    marginTop: 20,
+    borderRadius: 28,
+    padding: 22,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+
+  healthHomeHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 16,
+  },
+
+  healthHomeLabel: {
+    color: "#7FFFD4",
+    fontSize: 11,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+
+  healthSyncBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: "rgba(198,167,255,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    minWidth: 48,
+  },
+
+  healthSyncText: {
+    color: "#C6A7FF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  healthConnectRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    backgroundColor: "rgba(198,167,255,0.08)",
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.18)",
+  },
+
+  healthConnectIcon: { fontSize: 24 },
+
+  healthConnectTitle: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  healthConnectSub: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 12,
+    marginTop: 2,
+  },
+
+  healthMetricsRow: {
+    flexDirection: "row",
+    gap: 8,
+  },
+
+  healthSyncedAt: {
+    color: "rgba(255,255,255,0.30)",
+    fontSize: 11,
+    fontWeight: "500",
+    marginTop: 12,
+  },
+
+  // ── Fitness Recommendation Home Card ─────────────────────────────────
+  recCard: {
+    marginTop: 20,
+    borderRadius: 28,
+    overflow: "hidden",
+    borderWidth: 1,
+  },
+
+  recGrad: {
+    padding: 22,
+  },
+
+  recHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 14,
+  },
+
+  recIcon: { fontSize: 32 },
+
+  recSectionLabel: {
+    color: "rgba(255,255,255,0.45)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.7,
+    marginBottom: 4,
+  },
+
+  recTitle: {
+    color: "#FFFFFF",
+    fontSize: 20,
+    fontWeight: "900",
+  },
+
+  recSub: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 13,
+    marginTop: 2,
+  },
+
+  recWorkoutsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 12,
+  },
+
+  recWorkoutChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
+  },
+
+  recWorkoutText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+
+  recTapHint: {
+    color: "rgba(255,255,255,0.30)",
+    fontSize: 12,
+    fontWeight: "600",
   },
 });

@@ -22,6 +22,12 @@ export default function RootLayout() {
         <Stack.Screen name="nutrition" />
         <Stack.Screen name="reports" />
         <Stack.Screen name="checkin" />
+        <Stack.Screen name="workout-log" />
+        <Stack.Screen name="exercise-library" />
+        <Stack.Screen name="exercise-detail" />
+        <Stack.Screen name="progress-charts" />
+        <Stack.Screen name="achievements" />
+        <Stack.Screen name="morning-brief" />
       </Stack>
     </LanguageProvider>
   );

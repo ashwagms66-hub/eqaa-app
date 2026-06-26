@@ -1,6 +1,6 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  Animated,
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,307 +15,411 @@ import { getCurrentPhase, getCycleDay, getPhaseTheme } from "@/src/engine/cycleE
 import { getLastPeriod } from "@/src/storage/cycleStorage";
 import { useLanguage } from "@/src/context/LanguageContext";
 import { getLifeMode } from "@/src/storage/profileStorage";
+import { calculateReadiness } from "@/src/services/coach";
+import { generateWeeklyPlan, getTodaysPlan } from "@/src/services/training";
+import { getRecentWorkoutSessions } from "@/src/services/workouts";
+import { getAllPRs } from "@/src/services/pr";
+import { getFitnessInsights } from "@/src/services/fitness-ai";
+import { getWorkoutStats } from "@/src/services/workouts/statsService";
+import { getWeeklyMuscleMap } from "@/src/services/workouts/muscleTracker";
+import { getAllAchievements } from "@/src/services/achievements";
+import type { WorkoutSession } from "@/src/services/workouts/types";
+import type { PersonalRecord } from "@/src/services/pr/prService";
+import type { FitnessInsight } from "@/src/services/fitness-ai/fitnessInsightsService";
+import type { PlannedDay } from "@/src/services/training/weeklyPlanner";
+import type { ReadinessOutput } from "@/src/services/coach/readinessService";
+import type { WorkoutStats } from "@/src/services/workouts/statsService";
+import type { MuscleStatus } from "@/src/services/workouts/muscleTracker";
+import type { Achievement } from "@/src/services/achievements";
 
-type ExerciseCard = {
-  emoji: string;
-  nameAr: string;
-  nameEn: string;
-  durationAr: string;
-  durationEn: string;
-  difficulty: "beginner" | "easy" | "moderate" | "high";
-};
+// ── helpers ────────────────────────────────────────────────────────────────────
 
-const DIFFICULTY_COLOR: Record<ExerciseCard["difficulty"], string> = {
-  beginner: "#5BBB85",
-  easy:     "#89CFF0",
-  moderate: "#E9CF74",
-  high:     "#FF6FAE",
-};
+function formatDate(iso: string, language: string): string {
+  return new Date(iso).toLocaleDateString(language === "ar" ? "ar-SA" : "en-GB", {
+    day: "numeric",
+    month: "short",
+  });
+}
 
-const DIFFICULTY_LABEL: Record<ExerciseCard["difficulty"], { ar: string; en: string }> = {
-  beginner: { ar: "مبتدئ",   en: "Beginner" },
-  easy:     { ar: "سهل",     en: "Easy"     },
-  moderate: { ar: "متوسط",   en: "Moderate" },
-  high:     { ar: "قوي",     en: "High"     },
-};
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes}m`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m === 0 ? `${h}h` : `${h}h ${m}m`;
+}
 
-// ── workout data per phase key (cycleEngine keys) ─────────────────────────────
-
-type WorkoutPlan = {
-  sessionTitleAr: string;
-  sessionTitleEn: string;
-  sessionSubAr: string;
-  sessionSubEn: string;
-  caloriesEst: string;
-  durationMin: number;
-  tipAr: string;
-  tipEn: string;
-  exercises: ExerciseCard[];
-};
-
-const WORKOUT_PLANS: Record<string, WorkoutPlan> = {
-  menstrual: {
-    sessionTitleAr: "حركة لطيفة",
-    sessionTitleEn: "Gentle Flow",
-    sessionSubAr: "راحة واستعادة للطاقة",
-    sessionSubEn: "Rest and energy restoration",
-    caloriesEst: "160",
-    durationMin: 25,
-    tipAr: "الراحة هي الإنجاز الأكبر اليوم. استمعي لجسمكِ.",
-    tipEn: "Rest is your greatest achievement today. Listen to your body.",
-    exercises: [
-      { emoji: "🚶", nameAr: "مشي هادئ",        nameEn: "Gentle Walk",       durationAr: "20 دقيقة", durationEn: "20 min", difficulty: "beginner" },
-      { emoji: "🧘", nameAr: "تمدد لطيف",         nameEn: "Light Stretching",  durationAr: "10 دقائق", durationEn: "10 min", difficulty: "beginner" },
-      { emoji: "🌬️", nameAr: "تنفس عميق",        nameEn: "Deep Breathing",    durationAr: "5 دقائق",  durationEn: "5 min",  difficulty: "beginner" },
-    ],
-  },
-  power: {
-    sessionTitleAr: "حركة التجديد",
-    sessionTitleEn: "Renewal Session",
-    sessionSubAr: "بناء تدريجي وطاقة متصاعدة",
-    sessionSubEn: "Gradual building and rising energy",
-    caloriesEst: "280",
-    durationMin: 35,
-    tipAr: "جسمك يعود للحياة — ابدئي بلطف وابني بثبات.",
-    tipEn: "Your body is coming back to life — start gentle, build steady.",
-    exercises: [
-      { emoji: "🚶", nameAr: "مشي سريع",          nameEn: "Brisk Walk",        durationAr: "15 دقيقة", durationEn: "15 min", difficulty: "easy"     },
-      { emoji: "🏋️", nameAr: "تمارين قوة خفيفة",  nameEn: "Light Strength",    durationAr: "15 دقيقة", durationEn: "15 min", difficulty: "easy"     },
-      { emoji: "🧘", nameAr: "مرونة وتمدد",         nameEn: "Mobility Flow",     durationAr: "10 دقائق", durationEn: "10 min", difficulty: "beginner" },
-    ],
-  },
-  manifestation: {
-    sessionTitleAr: "قوة كاملة للجسم",
-    sessionTitleEn: "Full Body Power",
-    sessionSubAr: "ذروة الطاقة — وقت الإنجاز",
-    sessionSubEn: "Peak energy — time to achieve",
-    caloriesEst: "420",
-    durationMin: 50,
-    tipAr: "أنتِ في ذروة طاقتك — استثمري هذا الوقت بذكاء.",
-    tipEn: "You're at peak energy — invest this window wisely.",
-    exercises: [
-      { emoji: "🏋️", nameAr: "سكوات بأثقال",       nameEn: "Weighted Squats",   durationAr: "4 × 12 تكرار", durationEn: "4 × 12 reps", difficulty: "high"     },
-      { emoji: "💪", nameAr: "هيب ثرست",             nameEn: "Hip Thrust",        durationAr: "4 × 10 تكرار", durationEn: "4 × 10 reps", difficulty: "high"     },
-      { emoji: "🏃", nameAr: "تمرين كارديو",          nameEn: "Cardio Intervals",  durationAr: "20 دقيقة",    durationEn: "20 min",       difficulty: "moderate" },
-      { emoji: "🧘", nameAr: "تمدد بعد التمرين",      nameEn: "Cool-down Stretch", durationAr: "10 دقائق",    durationEn: "10 min",       difficulty: "easy"     },
-    ],
-  },
-  secondPower: {
-    sessionTitleAr: "وضوح وقوة",
-    sessionTitleEn: "Clarity & Strength",
-    sessionSubAr: "توازن وانسيابية",
-    sessionSubEn: "Balance and flow",
-    caloriesEst: "360",
-    durationMin: 45,
-    tipAr: "الجودة فوق الكمية — اختاري ما يستحق طاقتك.",
-    tipEn: "Quality over quantity — choose what deserves your energy.",
-    exercises: [
-      { emoji: "🧘", nameAr: "بيلاتس",              nameEn: "Pilates",           durationAr: "20 دقيقة", durationEn: "20 min", difficulty: "moderate" },
-      { emoji: "🏋️", nameAr: "قوة معتدلة",           nameEn: "Moderate Strength", durationAr: "20 دقيقة", durationEn: "20 min", difficulty: "moderate" },
-      { emoji: "🚶", nameAr: "مشي تأمل",              nameEn: "Mindful Walk",      durationAr: "10 دقائق", durationEn: "10 min", difficulty: "easy"     },
-      { emoji: "🌬️", nameAr: "تنفس وتمدد",           nameEn: "Breathwork",        durationAr: "5 دقائق",  durationEn: "5 min",  difficulty: "beginner" },
-    ],
-  },
-  reset: {
-    sessionTitleAr: "هدوء واستعادة",
-    sessionTitleEn: "Recovery Flow",
-    sessionSubAr: "حركة هادئة وجهاز عصبي متوازن",
-    sessionSubEn: "Gentle movement and nervous system balance",
-    caloriesEst: "200",
-    durationMin: 30,
-    tipAr: "الراحة إنجاز — جسمك يستعد للدورة القادمة.",
-    tipEn: "Rest is achievement — your body is preparing for the next cycle.",
-    exercises: [
-      { emoji: "🚶", nameAr: "مشي",                  nameEn: "Walking",           durationAr: "20 دقيقة", durationEn: "20 min", difficulty: "easy"     },
-      { emoji: "🧘", nameAr: "يوجا خفيفة",            nameEn: "Gentle Yoga",       durationAr: "15 دقيقة", durationEn: "15 min", difficulty: "easy"     },
-      { emoji: "💆", nameAr: "مرونة عميقة",            nameEn: "Deep Mobility",     durationAr: "10 دقائق", durationEn: "10 min", difficulty: "beginner" },
-    ],
-  },
-  pregnancy: {
-    sessionTitleAr: "حركة الحمل",
-    sessionTitleEn: "Pregnancy Flow",
-    sessionSubAr: "حركة لطيفة وتنفس ودعم",
-    sessionSubEn: "Gentle movement, breathing and support",
-    caloriesEst: "180",
-    durationMin: 30,
-    tipAr: "ركزي على الحركة اللطيفة والتنفس — كل حركة تفيدكِ وطفلكِ.",
-    tipEn: "Focus on gentle movement and breathing — every movement benefits you and baby.",
-    exercises: [
-      { emoji: "🚶", nameAr: "مشي",                  nameEn: "Walking",           durationAr: "15 دقيقة", durationEn: "15 min", difficulty: "easy"     },
-      { emoji: "🧘", nameAr: "مرونة الجسم",           nameEn: "Prenatal Mobility", durationAr: "10 دقائق", durationEn: "10 min", difficulty: "beginner" },
-      { emoji: "🌬️", nameAr: "تنفس عميق",            nameEn: "Breathing",         durationAr: "5 دقائق",  durationEn: "5 min",  difficulty: "beginner" },
-    ],
-  },
-  postpartum: {
-    sessionTitleAr: "حركة التعافي",
-    sessionTitleEn: "Recovery Movement",
-    sessionSubAr: "تعافي واستعادة للطاقة",
-    sessionSubEn: "Recovery and energy restoration",
-    caloriesEst: "150",
-    durationMin: 25,
-    tipAr: "التعافي البطيء والثابت أفضل — جسمك أنجز معجزة.",
-    tipEn: "Slow and steady recovery is best — your body performed a miracle.",
-    exercises: [
-      { emoji: "🚶", nameAr: "مشي",                  nameEn: "Walking",           durationAr: "15 دقيقة", durationEn: "15 min", difficulty: "beginner" },
-      { emoji: "🌬️", nameAr: "تنفس عميق",            nameEn: "Deep Breathing",    durationAr: "5 دقائق",  durationEn: "5 min",  difficulty: "beginner" },
-      { emoji: "💆", nameAr: "تقوية تعافي",           nameEn: "Core Recovery",     durationAr: "10 دقائق", durationEn: "10 min", difficulty: "easy"     },
-    ],
-  },
-};
-
-// ── component ─────────────────────────────────────────────────────────────────
+// ── screen ─────────────────────────────────────────────────────────────────────
 
 export default function WorkoutScreen() {
   const { language } = useLanguage();
   const isAr = language === "ar";
 
-  const [cycleDay, setCycleDay]   = useState(12);
-  const [lifeMode, setLifeMode]   = useState<
-    "regular" | "pregnancy" | "postpartum" | "pcos" | "moon"
-  >("regular");
-
-  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [loading, setLoading] = useState(true);
+  const [cycleDay, setCycleDay] = useState(12);
+  const [readiness, setReadiness] = useState<ReadinessOutput | null>(null);
+  const [todayPlan, setTodayPlan] = useState<PlannedDay | null>(null);
+  const [recentSessions, setRecentSessions] = useState<WorkoutSession[]>([]);
+  const [prs, setPrs] = useState<PersonalRecord[]>([]);
+  const [insights, setInsights] = useState<FitnessInsight[]>([]);
+  const [stats, setStats] = useState<WorkoutStats | null>(null);
+  const [muscles, setMuscles] = useState<MuscleStatus[]>([]);
+  const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
 
   useFocusEffect(
     useCallback(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.05, duration: 2200, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1,    duration: 2200, useNativeDriver: true }),
-        ])
-      ).start();
-
+      let cancelled = false;
       async function load() {
-        const [lastPeriod, savedMode] = await Promise.all([
-          getLastPeriod(),
-          getLifeMode(),
+        setLoading(true);
+        const [lastPeriod, savedMode] = await Promise.all([getLastPeriod(), getLifeMode()]);
+        if (cancelled) return;
+
+        const day = lastPeriod ? getCycleDay(lastPeriod) : 12;
+        setCycleDay(day);
+
+        const phase = getCurrentPhase(day);
+        const r = calculateReadiness({
+          cycleDay: day,
+          cyclePhase: phase.key,
+          sleepHours: null,
+          hrv: null,
+          restingHeartRate: null,
+          activeCaloriesYesterday: null,
+          symptoms: [],
+          energyLevel: null,
+          daysSinceLastWorkout: null,
+        });
+
+        const weekPlan = generateWeeklyPlan(phase.key);
+        const today = getTodaysPlan(weekPlan);
+
+        const [recent, allPRs, aiInsights, workoutStats, muscleMap, allAch] = await Promise.all([
+          getRecentWorkoutSessions(3),
+          getAllPRs(),
+          getFitnessInsights(),
+          getWorkoutStats(),
+          getWeeklyMuscleMap(),
+          getAllAchievements(),
         ]);
-        if (savedMode === "regular" || savedMode === "pregnancy" ||
-            savedMode === "postpartum" || savedMode === "pcos" || savedMode === "moon") {
-          setLifeMode(savedMode);
+
+        if (!cancelled) {
+          setReadiness(r);
+          setTodayPlan(today);
+          setRecentSessions(recent);
+          setPrs(allPRs.slice(0, 4));
+          setInsights(aiInsights.slice(0, 2));
+          setStats(workoutStats);
+          setMuscles(muscleMap);
+          setRecentAchievements(allAch.filter((a) => a.unlockedAt !== null).slice(-3).reverse());
+          setLoading(false);
         }
-        if (lastPeriod) setCycleDay(getCycleDay(lastPeriod));
       }
       load();
+      return () => { cancelled = true; };
     }, [])
   );
 
   const phase = useMemo(() => getCurrentPhase(cycleDay), [cycleDay]);
-  const theme = useMemo(() => getPhaseTheme(cycleDay),   [cycleDay]);
-
-  const planKey = lifeMode === "pregnancy"  ? "pregnancy"
-                : lifeMode === "postpartum" ? "postpartum"
-                : phase.key;
-
-  const plan = WORKOUT_PLANS[planKey] ?? WORKOUT_PLANS.reset;
+  const theme = useMemo(() => getPhaseTheme(cycleDay), [cycleDay]);
 
   return (
     <LinearGradient colors={["#05050A", "#121225", `${theme.glow}22`]} style={s.container}>
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* ── Header ── */}
-          <Text style={s.pageLabel}>{isAr ? "حركة إيقاع" : "Eqa'a Movement"}</Text>
-          <Text style={s.pageTitle}>
-            {isAr ? "رياضة تناسب\nطاقتك اليوم" : "Movement For\nYour Energy"}
-          </Text>
-          <Text style={[s.pageSub, isAr && { textAlign: "right" }]}>
-            {isAr
-              ? "اقتراحات حركة مبنية على مرحلتك وإيقاعك اليومي."
-              : "Movement suggestions aligned with your current phase and rhythm."}
-          </Text>
+          {/* Page header */}
+          <Text style={s.pageLabel}>{isAr ? "المدرب الذكي" : "AI Coach"}</Text>
+          <Text style={s.pageTitle}>{isAr ? "تدريبك اليوم" : "Your Training"}</Text>
 
-          {/* ── Phase hero card ── */}
-          <LinearGradient colors={[`${theme.glow}30`, "rgba(255,255,255,0.04)"]} style={s.heroCard}>
-            <Animated.View style={{ transform: [{ scale: pulseAnim }], alignSelf: "center" }}>
-              <View style={[s.heroOrb, { backgroundColor: theme.accent, shadowColor: theme.accent }]}>
-                <Text style={s.heroEmoji}>{phase.icon}</Text>
-              </View>
-            </Animated.View>
-            <Text style={s.heroPhase}>{isAr ? phase.phaseArabic : phase.title}</Text>
-            <Text style={[s.heroDesc, isAr && { textAlign: "right" }]}>
-              {isAr ? phase.descriptionArabic : phase.description}
-            </Text>
-
-            {/* Stats row */}
-            <View style={[s.statsRow, isAr && { flexDirection: "row-reverse" }]}>
-              <View style={s.statPill}>
-                <Text style={s.statEmoji}>🔥</Text>
-                <Text style={s.statVal}>~{plan.caloriesEst}</Text>
-                <Text style={s.statUnit}>{isAr ? "سعرة" : "kcal"}</Text>
-              </View>
-              <View style={s.statPill}>
-                <Text style={s.statEmoji}>⏱️</Text>
-                <Text style={s.statVal}>{plan.durationMin}</Text>
-                <Text style={s.statUnit}>{isAr ? "دقيقة" : "min"}</Text>
-              </View>
-            </View>
-          </LinearGradient>
-
-          {/* ── Session info ── */}
-          <View style={s.sessionHeader}>
-            <Text style={[s.sessionTitle, isAr && { textAlign: "right" }]}>
-              {isAr ? plan.sessionTitleAr : plan.sessionTitleEn}
-            </Text>
-            <Text style={[s.sessionSub, isAr && { textAlign: "right" }]}>
-              {isAr ? plan.sessionSubAr : plan.sessionSubEn}
-            </Text>
-          </View>
-
-          {/* ── Exercise cards ── */}
-          <View style={s.exerciseSection}>
-            {plan.exercises.map((ex, idx) => {
-              const diffColor = DIFFICULTY_COLOR[ex.difficulty];
-              const diffLabel = DIFFICULTY_LABEL[ex.difficulty];
-              return (
-                <View key={idx} style={s.exCard}>
-                  <View style={[s.exLeft, isAr && { flexDirection: "row-reverse" }]}>
-                    <View style={[s.exEmojiWrap, { backgroundColor: `${diffColor}18` }]}>
-                      <Text style={s.exEmoji}>{ex.emoji}</Text>
+          {loading ? (
+            <ActivityIndicator color="#C6A7FF" style={{ marginTop: 60 }} />
+          ) : (
+            <>
+              {/* ── Readiness score ─────────────────────────────────────── */}
+              {readiness && (
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={[s.readinessCard, { borderColor: `${readiness.color}40` }]}
+                  onPress={() => router.push("/insights" as any)}
+                >
+                  <LinearGradient
+                    colors={[`${readiness.color}18`, "rgba(0,0,0,0)"]}
+                    style={s.readinessGrad}
+                  >
+                    <View style={[s.readinessRow, isAr && { flexDirection: "row-reverse" }]}>
+                      <View style={[s.readinessOrb, { borderColor: readiness.color }]}>
+                        <Text style={[s.readinessScore, { color: readiness.color }]}>
+                          {readiness.score}
+                        </Text>
+                        <Text style={s.readinessOf}>/100</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.readinessLabel, { color: readiness.color }]}>
+                          {isAr ? readiness.labelAr : readiness.label}
+                        </Text>
+                        <Text style={[s.readinessFocus, isAr && { textAlign: "right" }]}>
+                          {isAr ? readiness.recommendedFocusAr : readiness.recommendedFocus}
+                        </Text>
+                        {readiness.reasons.length > 0 && (
+                          <Text style={[s.readinessReason, isAr && { textAlign: "right" }]}>
+                            {isAr ? readiness.reasonsAr[0] : readiness.reasons[0]}
+                          </Text>
+                        )}
+                      </View>
                     </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.exName, isAr && { textAlign: "right" }]}>
-                        {isAr ? ex.nameAr : ex.nameEn}
-                      </Text>
-                      <Text style={[s.exDuration, isAr && { textAlign: "right" }]}>
-                        {isAr ? ex.durationAr : ex.durationEn}
-                      </Text>
-                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {/* ── Today's plan ─────────────────────────────────────────── */}
+              {todayPlan && (
+                <Section title={isAr ? "خطة اليوم" : "Today's Plan"}>
+                  <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[s.todayCard, { borderColor: theme.accent + "44" }]}
+                    onPress={() => router.push("/workout-log" as any)}
+                  >
+                    <LinearGradient
+                      colors={[`${theme.accent}18`, "rgba(0,0,0,0)"]}
+                      style={s.todayGrad}
+                    >
+                      <View style={[s.todayRow, isAr && { flexDirection: "row-reverse" }]}>
+                        <View style={[s.intensityOrb, { backgroundColor: todayPlan.isRest ? "#44444440" : `${theme.accent}30` }]}>
+                          <Text style={s.intensityEmoji}>
+                            {todayPlan.isRest ? "😴" : todayPlan.intensity === "high" ? "🔥" : todayPlan.intensity === "moderate" ? "💪" : "🌿"}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.todayFocus, isAr && { textAlign: "right" }]}>
+                            {isAr ? todayPlan.focusAr : todayPlan.focusEn}
+                          </Text>
+                          <Text style={[s.todayMeta, isAr && { textAlign: "right" }]}>
+                            {todayPlan.isRest
+                              ? (isAr ? "يوم راحة 😴" : "Rest Day 😴")
+                              : `${todayPlan.durationMinutes}min · ${todayPlan.exerciseCategories.join(", ")}`}
+                          </Text>
+                        </View>
+                        {!todayPlan.isRest && (
+                          <Text style={[s.todayArrow, { color: theme.accent }]}>›</Text>
+                        )}
+                      </View>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </Section>
+              )}
+
+              {/* ── Quick actions ────────────────────────────────────────── */}
+              <View style={[s.quickRow, isAr && { flexDirection: "row-reverse" }]}>
+                <TouchableOpacity
+                  style={[s.quickBtnPrimary, { backgroundColor: theme.accent }]}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/workout-log" as any)}
+                >
+                  <Text style={s.quickEmoji}>🏋️‍♀️</Text>
+                  <Text style={s.quickLabelDark}>{isAr ? "سجّلي تمريناً" : "Log Workout"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.quickBtnOutline}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/exercise-library" as any)}
+                >
+                  <Text style={s.quickEmoji}>📚</Text>
+                  <Text style={s.quickLabelLight}>{isAr ? "مكتبة التمارين" : "Exercise Library"}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[s.quickRow, isAr && { flexDirection: "row-reverse" }]}>
+                <TouchableOpacity
+                  style={s.quickBtnOutline}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/progress-charts" as any)}
+                >
+                  <Text style={s.quickEmoji}>📈</Text>
+                  <Text style={s.quickLabelLight}>{isAr ? "تحليل التقدم" : "Progress Charts"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.quickBtnOutline}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/achievements" as any)}
+                >
+                  <Text style={s.quickEmoji}>🏆</Text>
+                  <Text style={s.quickLabelLight}>{isAr ? "الإنجازات" : "Achievements"}</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* ── Stats row ─────────────────────────────────────────────── */}
+              {stats && (
+                <Section title={isAr ? "إحصاءاتك" : "Your Stats"}>
+                  <View style={s.statsGrid}>
+                    {[
+                      { icon: "🏋️", val: String(stats.totalSessions), label: isAr ? "تمارين" : "Sessions" },
+                      { icon: "🔥", val: `${stats.currentStreakDays}`, label: isAr ? "أيام متتالية" : "Day streak" },
+                      { icon: "📦", val: stats.weeklyVolumeKg > 999 ? `${(stats.weeklyVolumeKg/1000).toFixed(1)}t` : `${stats.weeklyVolumeKg}kg`, label: isAr ? "حجم أسبوعي" : "Week vol." },
+                      { icon: "⭐", val: String(stats.totalPRs), label: isAr ? "أرقام قياسية" : "PRs" },
+                    ].map((item, i) => (
+                      <TouchableOpacity
+                        key={i}
+                        style={s.statCard}
+                        onPress={() => router.push("/progress-charts" as any)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={s.statIcon}>{item.icon}</Text>
+                        <Text style={s.statVal}>{item.val}</Text>
+                        <Text style={s.statLabel}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                  <View style={[s.diffBadge, { backgroundColor: `${diffColor}20`, borderColor: `${diffColor}50` }]}>
-                    <Text style={[s.diffTxt, { color: diffColor }]}>
-                      {isAr ? diffLabel.ar : diffLabel.en}
+                </Section>
+              )}
+
+              {/* ── Weekly muscle coverage ──────────────────────────────── */}
+              {muscles.length > 0 && (
+                <Section title={isAr ? "تغطية العضلات — آخر 7 أيام" : "Muscle Coverage — Last 7 Days"}>
+                  <View style={s.muscleGrid}>
+                    {muscles.map((m) => (
+                      <View key={m.key} style={[s.muscleChip, { borderColor: m.color + "50" }]}>
+                        <View style={[s.muscleDot, { backgroundColor: m.color }]} />
+                        <Text style={s.muscleEmoji}>{m.emoji}</Text>
+                        <Text style={s.muscleName}>{isAr ? m.nameAr : m.nameEn}</Text>
+                        {m.daysAgo !== null && (
+                          <Text style={[s.muscleDays, { color: m.color }]}>
+                            {m.daysAgo === 0 ? (isAr ? "اليوم" : "Today") : `${m.daysAgo}d`}
+                          </Text>
+                        )}
+                      </View>
+                    ))}
+                  </View>
+                </Section>
+              )}
+
+              {/* ── AI Insights ──────────────────────────────────────────── */}
+              {insights.length > 0 && (
+                <Section title={isAr ? "رؤى الذكاء الاصطناعي" : "AI Insights"}>
+                  {insights.map((insight) => (
+                    <View key={insight.id} style={s.insightCard}>
+                      <Text style={s.insightIcon}>{insight.icon}</Text>
+                      <Text style={[s.insightText, isAr && { textAlign: "right" }]}>
+                        {isAr ? insight.textAr : insight.textEn}
+                      </Text>
+                    </View>
+                  ))}
+                </Section>
+              )}
+
+              {/* ── Recent achievements ──────────────────────────────────── */}
+              {recentAchievements.length > 0 && (
+                <Section title={isAr ? "آخر الإنجازات" : "Recent Achievements"}>
+                  <View style={s.achRow}>
+                    {recentAchievements.map((ach) => (
+                      <TouchableOpacity
+                        key={ach.id}
+                        style={s.achChip}
+                        onPress={() => router.push("/achievements" as any)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={s.achIcon}>{ach.icon}</Text>
+                        <Text style={s.achName}>{isAr ? ach.nameAr : ach.nameEn}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    <TouchableOpacity
+                      style={s.achMore}
+                      onPress={() => router.push("/achievements" as any)}
+                    >
+                      <Text style={s.achMoreTxt}>{isAr ? "الكل ←" : "All →"}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </Section>
+              )}
+
+              {/* ── Personal records ─────────────────────────────────────── */}
+              {prs.length > 0 && (
+                <Section title={isAr ? "أرقامك القياسية" : "Personal Records"}>
+                  <View style={s.prGrid}>
+                    {prs.map((pr) => (
+                      <View key={pr.exerciseId} style={s.prCard}>
+                        <Text style={s.prEmoji}>🏆</Text>
+                        <Text style={s.prExName} numberOfLines={1}>
+                          {isAr ? pr.exerciseNameAr : pr.exerciseNameEn}
+                        </Text>
+                        {pr.estimated1RMkg && (
+                          <Text style={s.pr1RM}>{pr.estimated1RMkg}kg</Text>
+                        )}
+                        <Text style={s.prLabel}>{isAr ? "1RM تقديري" : "Est. 1RM"}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </Section>
+              )}
+
+              {/* ── Recent workouts ──────────────────────────────────────── */}
+              {recentSessions.length > 0 && (
+                <Section title={isAr ? "التمارين الأخيرة" : "Recent Workouts"}>
+                  {recentSessions.map((session) => (
+                    <View key={session.id} style={s.sessionCard}>
+                      <View style={[s.sessionRow, isAr && { flexDirection: "row-reverse" }]}>
+                        <View style={s.sessionIconWrap}>
+                          <Text style={s.sessionIcon}>💪</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.sessionName, isAr && { textAlign: "right" }]}>
+                            {session.exercises.length > 0
+                              ? (isAr
+                                  ? session.exercises[0].exerciseNameAr
+                                  : session.exercises[0].exerciseNameEn) +
+                                (session.exercises.length > 1 ? ` +${session.exercises.length - 1}` : "")
+                              : (isAr ? "تمرين" : "Workout")}
+                          </Text>
+                          <Text style={[s.sessionMeta, isAr && { textAlign: "right" }]}>
+                            {formatDate(session.startedAt, language)}
+                            {session.durationMinutes ? ` · ${formatDuration(session.durationMinutes)}` : ""}
+                            {session.cyclePhase ? ` · ${session.cyclePhase}` : ""}
+                          </Text>
+                        </View>
+                        {session.perceivedEnergy && (
+                          <Text style={s.sessionEnergy}>
+                            {"⭐".repeat(session.perceivedEnergy)}
+                          </Text>
+                        )}
+                      </View>
+                    </View>
+                  ))}
+                  <TouchableOpacity
+                    style={s.viewAllBtn}
+                    onPress={() => router.push("/progress-charts" as any)}
+                  >
+                    <Text style={s.viewAllTxt}>
+                      {isAr ? "عرض كل التحليلات →" : "View all analytics →"}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
+                </Section>
+              )}
+
+              {/* ── Empty state ──────────────────────────────────────────── */}
+              {recentSessions.length === 0 && prs.length === 0 && (
+                <View style={s.emptyState}>
+                  <Text style={s.emptyEmoji}>🌱</Text>
+                  <Text style={s.emptyTitle}>{isAr ? "ابدئي رحلتك التدريبية" : "Start Your Training Journey"}</Text>
+                  <Text style={s.emptySub}>
+                    {isAr
+                      ? "سجّلي أول تمرين لتظهر بياناتك وتحليلاتك الشخصية."
+                      : "Log your first workout and your personal analytics will appear here."}
+                  </Text>
                 </View>
-              );
-            })}
-          </View>
-
-          {/* ── Today's tip ── */}
-          <View style={[s.tipCard, { backgroundColor: `${theme.glow}15` }]}>
-            <Text style={[s.tipTitle, isAr && { textAlign: "right" }]}>
-              {isAr ? "💡 نصيحة اليوم" : "💡 Today's Insight"}
-            </Text>
-            <Text style={[s.tipText, isAr && { textAlign: "right" }]}>
-              {isAr ? plan.tipAr : plan.tipEn}
-            </Text>
-          </View>
-
-          {/* ── Start button ── */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => router.push("/movement-session")}
-            style={[s.startBtn, { backgroundColor: theme.accent }]}
-          >
-            <Text style={s.startBtnTxt}>
-              {isAr ? "ابدئي الحركة" : "Start Session"}
-            </Text>
-          </TouchableOpacity>
-
+              )}
+            </>
+          )}
         </ScrollView>
       </SafeAreaView>
     </LinearGradient>
+  );
+}
+
+// ── Section helper ─────────────────────────────────────────────────────────────
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <View style={s.sectionBlock}>
+      <Text style={s.sectionTitle}>{title}</Text>
+      {children}
+    </View>
   );
 }
 
@@ -323,167 +427,145 @@ export default function WorkoutScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1 },
-
-  scroll: {
-    paddingHorizontal: 22,
-    paddingTop: 20,
-    paddingBottom: 140,
-    gap: 0,
-  },
+  scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 140 },
 
   pageLabel: {
-    color: "#C6A7FF",
-    fontSize: 12,
-    fontWeight: "800",
-    textAlign: "center",
-    letterSpacing: 1.6,
-    textTransform: "uppercase",
-    marginBottom: 6,
+    color: "#C6A7FF", fontSize: 11, fontWeight: "800", textAlign: "center",
+    letterSpacing: 1.6, textTransform: "uppercase", marginBottom: 6,
   },
-
   pageTitle: {
-    color: "#FFFFFF",
-    fontSize: 38,
-    fontWeight: "900",
-    textAlign: "center",
-    lineHeight: 46,
-    letterSpacing: -0.5,
+    color: "#FFFFFF", fontSize: 34, fontWeight: "900", textAlign: "center",
+    letterSpacing: -0.5, marginBottom: 20,
   },
 
-  pageSub: {
-    color: "rgba(255,255,255,0.55)",
-    fontSize: 15,
-    textAlign: "center",
-    lineHeight: 24,
-    marginTop: 10,
-    marginBottom: 4,
+  sectionBlock: { marginBottom: 24 },
+  sectionTitle: { color: "#FFFFFF", fontSize: 19, fontWeight: "900", marginBottom: 12 },
+
+  // Readiness
+  readinessCard: { borderRadius: 28, borderWidth: 1, overflow: "hidden", marginBottom: 20 },
+  readinessGrad: { padding: 20 },
+  readinessRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+  readinessOrb: {
+    width: 80, height: 80, borderRadius: 40, borderWidth: 3,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
+  readinessScore: { fontSize: 28, fontWeight: "900" },
+  readinessOf: { color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "700" },
+  readinessLabel: { fontSize: 18, fontWeight: "900", marginBottom: 4 },
+  readinessFocus: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  readinessReason: { color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "600", marginTop: 4 },
 
-  heroCard: {
-    marginTop: 28,
-    borderRadius: 32,
-    padding: 28,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+  // Today
+  todayCard: { borderRadius: 24, borderWidth: 1, overflow: "hidden" },
+  todayGrad: { padding: 18 },
+  todayRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  intensityOrb: { width: 52, height: 52, borderRadius: 16, alignItems: "center", justifyContent: "center", flexShrink: 0 },
+  intensityEmoji: { fontSize: 24 },
+  todayFocus: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginBottom: 4 },
+  todayMeta: { color: "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: "600" },
+  todayArrow: { fontSize: 28, fontWeight: "900" },
+
+  // Quick actions
+  quickRow: { flexDirection: "row", gap: 12, marginBottom: 12 },
+  quickBtnPrimary: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 20,
   },
-
-  heroOrb: {
-    width: 100,
-    height: 100,
-    borderRadius: 999,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowOpacity: 0.45,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 10 },
-    marginBottom: 20,
+  quickBtnOutline: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 20,
+    borderWidth: 1.5, borderColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
+  quickEmoji: { fontSize: 18 },
+  quickLabelDark: { color: "#111", fontSize: 13, fontWeight: "800" },
+  quickLabelLight: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
 
-  heroEmoji:  { fontSize: 40 },
-  heroPhase:  { color: "#FFFFFF", fontSize: 26, fontWeight: "900", textAlign: "center" },
-
-  heroDesc: {
-    color: "rgba(255,255,255,0.70)",
-    fontSize: 15,
-    lineHeight: 26,
-    textAlign: "center",
-    fontWeight: "600",
-    marginTop: 10,
+  // Stats
+  statsGrid: { flexDirection: "row", gap: 10 },
+  statCard: {
+    flex: 1, backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 18, padding: 14, alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.07)", gap: 4,
   },
+  statIcon: { fontSize: 18 },
+  statVal: { color: "#FFFFFF", fontSize: 18, fontWeight: "900" },
+  statLabel: { color: "rgba(255,255,255,0.4)", fontSize: 10, fontWeight: "700", textAlign: "center" },
 
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "center",
-    gap: 12,
-    marginTop: 20,
-  },
-
-  statPill: {
+  // Muscle map
+  muscleGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  muscleChip: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 14,
+    backgroundColor: "rgba(255,255,255,0.04)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.10)",
+    position: "relative",
   },
+  muscleDot: { width: 8, height: 8, borderRadius: 4 },
+  muscleEmoji: { fontSize: 16 },
+  muscleName: { color: "#FFFFFF", fontSize: 12, fontWeight: "700" },
+  muscleDays: { fontSize: 11, fontWeight: "700" },
 
-  statEmoji: { fontSize: 14 },
-  statVal:   { color: "#FFFFFF",                  fontSize: 16, fontWeight: "900" },
-  statUnit:  { color: "rgba(255,255,255,0.45)",   fontSize: 12, fontWeight: "700" },
-
-  sessionHeader: { marginTop: 28, marginBottom: 16 },
-  sessionTitle:  { color: "#FFFFFF",               fontSize: 26, fontWeight: "900" },
-  sessionSub:    { color: "rgba(255,255,255,0.50)", fontSize: 14, fontWeight: "600", marginTop: 4 },
-
-  exerciseSection: { gap: 12 },
-
-  exCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    borderRadius: 22,
-    padding: 16,
-    backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    gap: 12,
+  // Insights
+  insightCard: {
+    flexDirection: "row", alignItems: "flex-start", gap: 12,
+    backgroundColor: "rgba(255,255,255,0.05)", borderRadius: 18,
+    padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
+  insightIcon: { fontSize: 22, flexShrink: 0 },
+  insightText: { color: "rgba(255,255,255,0.8)", fontSize: 14, fontWeight: "600", lineHeight: 22, flex: 1 },
 
-  exLeft: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 14,
-    flex: 1,
+  // Achievements row
+  achRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  achChip: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: "rgba(198,167,255,0.08)", borderRadius: 14,
+    paddingHorizontal: 12, paddingVertical: 8,
+    borderWidth: 1, borderColor: "rgba(198,167,255,0.20)",
   },
+  achIcon: { fontSize: 18 },
+  achName: { color: "#C6A7FF", fontSize: 12, fontWeight: "700" },
+  achMore: { paddingHorizontal: 12, paddingVertical: 8, justifyContent: "center" },
+  achMoreTxt: { color: "rgba(255,255,255,0.4)", fontSize: 13, fontWeight: "700" },
 
-  exEmojiWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
+  // PRs
+  prGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  prCard: {
+    width: "47%", flexGrow: 1, backgroundColor: "rgba(255,255,255,0.05)",
+    borderRadius: 18, padding: 14, alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(255,215,0,0.20)", gap: 4,
   },
+  prEmoji: { fontSize: 22 },
+  prExName: { color: "#FFFFFF", fontSize: 13, fontWeight: "800", textAlign: "center" },
+  pr1RM: { color: "#FFD700", fontSize: 20, fontWeight: "900" },
+  prLabel: { color: "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: "700" },
 
-  exEmoji:    { fontSize: 22 },
-  exName:     { color: "#FFFFFF",                  fontSize: 16, fontWeight: "800" },
-  exDuration: { color: "rgba(255,255,255,0.48)",   fontSize: 13, fontWeight: "600", marginTop: 3 },
-
-  diffBadge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    borderWidth: 1,
-    flexShrink: 0,
+  // Recent sessions
+  sessionCard: {
+    backgroundColor: "rgba(255,255,255,0.04)", borderRadius: 18,
+    padding: 14, marginBottom: 10, borderWidth: 1, borderColor: "rgba(255,255,255,0.07)",
   },
-
-  diffTxt: { fontSize: 12, fontWeight: "800" },
-
-  tipCard: {
-    marginTop: 24,
-    borderRadius: 26,
-    padding: 22,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
-    gap: 12,
+  sessionRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  sessionIconWrap: {
+    width: 44, height: 44, borderRadius: 14,
+    backgroundColor: "rgba(198,167,255,0.12)",
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
+  sessionIcon: { fontSize: 20 },
+  sessionName: { color: "#FFFFFF", fontSize: 15, fontWeight: "800" },
+  sessionMeta: { color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: "600", marginTop: 2 },
+  sessionEnergy: { fontSize: 12, flexShrink: 0 },
 
-  tipTitle: { color: "#FFFFFF",                  fontSize: 17, fontWeight: "900" },
-  tipText:  { color: "rgba(255,255,255,0.72)",   fontSize: 15, lineHeight: 26, fontWeight: "600" },
+  viewAllBtn: { paddingVertical: 12, alignItems: "center" },
+  viewAllTxt: { color: "#C6A7FF", fontSize: 14, fontWeight: "700" },
 
-  startBtn: {
-    marginTop: 28,
-    height: 62,
-    borderRadius: 999,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowOpacity: 0.35,
-    shadowRadius: 22,
-    shadowOffset: { width: 0, height: 8 },
-  },
-
-  startBtnTxt: { color: "#111111", fontSize: 17, fontWeight: "900" },
+  // Empty
+  emptyState: { alignItems: "center", paddingTop: 30, gap: 12 },
+  emptyEmoji: { fontSize: 48 },
+  emptyTitle: { color: "#FFFFFF", fontSize: 20, fontWeight: "900" },
+  emptySub: { color: "rgba(255,255,255,0.5)", fontSize: 15, lineHeight: 24, fontWeight: "600", textAlign: "center" },
 });

@@ -104,7 +104,6 @@ export default function PreferencesScreen() {
           </Text>
         </Pressable>
         <ScrollView
-          style={styles.scrollView}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
@@ -210,10 +209,6 @@ const styles = StyleSheet.create({
   scroll: {
     paddingHorizontal: 24,
     paddingBottom: 140,
-  },
-
-  scrollView: {
-    flex: 1,
   },
 
   languageButton: {

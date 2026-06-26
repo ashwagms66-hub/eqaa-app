@@ -39,12 +39,12 @@ export const FASTING_PHASES: Record<
   power: {
     nameAr: "مرحلة القوة",
     nameEn: "Power Phase",
-    daysRangeAr: "الأيام ١–١٠",
-    daysRangeEn: "Days 1–10",
+    daysRangeAr: "الأيام ٦–١٠",
+    daysRangeEn: "Days 6–10",
     descAr:
-      "طاقتكِ قد تعود تدريجياً بعد بداية الدورة. هذه مرحلة إعادة بناء ناعمة وهادئة.",
+      "طاقتكِ تعود تدريجياً في هذه المرحلة. وقت مناسب لإعادة البناء بهدوء.",
     descEn:
-      "Your energy may slowly return after your cycle begins. This is a soft, gentle rebuilding phase.",
+      "Your energy is gradually returning. A good time for gentle rebuilding and movement.",
     fastingHoursMin: 13,
     fastingHoursMax: 16,
     fastingLabelAr: "١٣–١٦ ساعة",
@@ -188,7 +188,14 @@ export const FASTING_PHASES: Record<
 };
 
 // ── Phase detection from cycle day ────────────────────────────────────────────
+// Boundaries match wellnessEngine.ts exactly:
+//   1–5  menstrual  → rest   (12–13h, gentle nourishment)
+//   6–10 renewal    → power  (13–16h, rebuilding energy)
+//  11–15 power      → balance (13–15h, peak window)
+//  16–19 clarity    → clarity (13–16h, focused)
+//  20–28 calm       → rest   (12–13h, wind-down)
 export function getFastingPhase(cycleDay: number): FastingPhaseKey {
+  if (cycleDay <= 5)  return "rest";
   if (cycleDay <= 10) return "power";
   if (cycleDay <= 15) return "balance";
   if (cycleDay <= 19) return "clarity";

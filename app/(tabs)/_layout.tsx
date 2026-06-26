@@ -2,9 +2,9 @@ import { useLanguage } from "@/src/context/LanguageContext";
 import { Tabs } from "expo-router";
 
 import {
+  Brain,
   CalendarDays,
   Dumbbell,
-  Ellipsis,
   Home,
   Zap,
 } from "lucide-react-native";
@@ -164,18 +164,18 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="more"
+        name="ai-coach"
         options={{
           title:
             language === "ar"
-              ? "المزيد"
-              : "More",
+              ? "المدرب"
+              : "AI Coach",
 
           tabBarIcon: ({
             color,
             size,
           }) => (
-            <Ellipsis
+            <Brain
               color={color}
               size={size}
               strokeWidth={2.4}
@@ -183,6 +183,12 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      {/* more tab still exists but is hidden from the bar */}
+      <Tabs.Screen name="more" options={{ href: null }} />
+
+      {/* reports is a tab-group screen used via deep link only — hidden from bar */}
+      <Tabs.Screen name="reports" options={{ href: null }} />
     </Tabs>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -14,7 +15,8 @@ import {
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { LinearGradient } from "expo-linear-gradient";
 import { router } from "expo-router";
-import { ChevronRight, Languages, Leaf, Moon, User, Zap } from "lucide-react-native";
+import { ChevronRight, Heart, Languages, Leaf, Moon, User, Zap } from "lucide-react-native";
+import { useHealthData } from "@/src/services/health/useHealthData";
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -89,7 +91,17 @@ const lifeModes = [
 
 export default function MoreScreen() {
   const { language, setLanguage } = useLanguage();
+  const insets = useSafeAreaInsets();
   const isAr = language === "ar";
+
+  const {
+    metrics,
+    syncing,
+    permissionStatus,
+    isAvailable,
+    requestAndSync,
+    sync,
+  } = useHealthData();
 
   const [firstName, setFirstName] = useState("");
   const [lastPeriodDate, setLastPeriodDate] = useState("");
@@ -222,7 +234,7 @@ export default function MoreScreen() {
         keyboardVerticalOffset={90}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + 24 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
@@ -629,6 +641,63 @@ export default function MoreScreen() {
             </Text>
           </View>
 
+          {/* ── Health Data Permissions ─────────────────────────────────────── */}
+          {isAvailable && (
+            <View style={styles.healthPermSection}>
+              <View style={[styles.healthPermHeader, isAr && styles.rtlRow]}>
+                <Heart color="#F472B6" size={18} strokeWidth={2.2} />
+                <Text style={styles.healthPermTitle}>
+                  {isAr ? "بيانات الصحة" : "Health Data"}
+                </Text>
+              </View>
+              <Text style={[styles.healthPermDesc, isAr && styles.rtlText]}>
+                {isAr
+                  ? "يستطيع إيقاع قراءة خطواتك ونومك ونبضك من Apple Health أو Health Connect لتوليد نقاطك اليومية ورؤاك الصحية."
+                  : "Eqa'a can read steps, sleep, and heart rate from Apple Health or Health Connect to power your daily score and insights."}
+              </Text>
+
+              {permissionStatus === "granted" ? (
+                <View style={[styles.healthPermGranted, isAr && styles.rtlRow]}>
+                  <Text style={styles.healthPermGrantedDot}>●</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.healthPermGrantedText, isAr && styles.rtlText]}>
+                      {isAr ? "تم منح الإذن" : "Permission granted"}
+                    </Text>
+                    {metrics?.lastSynced && (
+                      <Text style={[styles.healthPermSyncedAt, isAr && styles.rtlText]}>
+                        {isAr ? "آخر مزامنة: " : "Last synced: "}
+                        {new Date(metrics.lastSynced).toLocaleTimeString()}
+                      </Text>
+                    )}
+                  </View>
+                  <TouchableOpacity
+                    onPress={sync}
+                    disabled={syncing}
+                    style={styles.healthPermSyncBtn}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.healthPermSyncBtnText}>
+                      {syncing
+                        ? isAr ? "جارٍ…" : "Syncing…"
+                        : isAr ? "مزامنة" : "Sync Now"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  onPress={requestAndSync}
+                  activeOpacity={0.86}
+                  style={styles.healthPermConnectBtn}
+                >
+                  <Text style={styles.healthPermConnectText}>
+                    {isAr ? "ربط Apple Health / Health Connect" : "Connect Apple Health / Health Connect"}
+                  </Text>
+                  <ChevronRight color="#F472B6" size={16} />
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
           {/* ── 8. Privacy & Support ────────────────────────────────────────── */}
           <View style={styles.footer}>
             <Text style={[styles.footerText, isAr && styles.rtlText]}>
@@ -657,7 +726,6 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
 
   scroll: {
-    paddingTop: 120,
     paddingHorizontal: 22,
     paddingBottom: 180,
   },
@@ -682,6 +750,10 @@ const styles = StyleSheet.create({
   rtlText: {
     textAlign: "right",
     writingDirection: "rtl",
+  },
+
+  rtlRow: {
+    flexDirection: "row-reverse",
   },
 
   // ── Section containers ──────────────────────────────────────────────────────
@@ -1112,6 +1184,95 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
     lineHeight: 18,
+  },
+
+  // ── Health Permissions ──────────────────────────────────────────────────────
+  healthPermSection: {
+    marginBottom: 28,
+    backgroundColor: "rgba(244,114,182,0.08)",
+    borderRadius: 24,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "rgba(244,114,182,0.18)",
+  },
+
+  healthPermHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
+
+  healthPermTitle: {
+    color: "#F472B6",
+    fontSize: 15,
+    fontWeight: "800",
+  },
+
+  healthPermDesc: {
+    color: "rgba(255,255,255,0.62)",
+    fontSize: 13,
+    lineHeight: 22,
+    marginBottom: 16,
+  },
+
+  healthPermGranted: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(52,211,153,0.10)",
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "rgba(52,211,153,0.22)",
+  },
+
+  healthPermGrantedDot: {
+    color: "#34D399",
+    fontSize: 10,
+  },
+
+  healthPermGrantedText: {
+    color: "#34D399",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+
+  healthPermSyncedAt: {
+    color: "rgba(255,255,255,0.40)",
+    fontSize: 11,
+    marginTop: 2,
+  },
+
+  healthPermSyncBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 12,
+    backgroundColor: "rgba(52,211,153,0.14)",
+  },
+
+  healthPermSyncBtnText: {
+    color: "#34D399",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+
+  healthPermConnectBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(244,114,182,0.12)",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "rgba(244,114,182,0.22)",
+  },
+
+  healthPermConnectText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+    flex: 1,
   },
 
   // ── Privacy & Support ───────────────────────────────────────────────────────
