@@ -64,7 +64,16 @@
         }
       ],
 
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Eqa'a uses your camera to scan gym equipment and identify exercises using AI.",
+          "photosPermission": "Eqa'a accesses your photo library to scan gym equipment images.",
+          "microphonePermission": false
+        }
+      ]
     ],
 
     "experiments": {

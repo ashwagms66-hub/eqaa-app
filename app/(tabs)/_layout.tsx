@@ -6,6 +6,7 @@ import {
   CalendarDays,
   Dumbbell,
   Home,
+  ScanLine,
   Zap,
 } from "lucide-react-native";
 
@@ -176,6 +177,27 @@ export default function TabLayout() {
             size,
           }) => (
             <Brain
+              color={color}
+              size={size}
+              strokeWidth={2.4}
+            />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="gym-scanner"
+        options={{
+          title:
+            language === "ar"
+              ? "التمارين"
+              : "Exercises",
+
+          tabBarIcon: ({
+            color,
+            size,
+          }) => (
+            <ScanLine
               color={color}
               size={size}
               strokeWidth={2.4}
