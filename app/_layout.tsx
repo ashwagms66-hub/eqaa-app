@@ -30,6 +30,9 @@ export default function RootLayout() {
         <Stack.Screen name="morning-brief" />
         <Stack.Screen name="gym-scan-result" />
         <Stack.Screen name="workout-session" />
+        <Stack.Screen name="profile-settings" />
+        <Stack.Screen name="nutrition-profile" />
+        <Stack.Screen name="cycle-settings" />
       </Stack>
     </LanguageProvider>
   );
