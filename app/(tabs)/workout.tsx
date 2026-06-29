@@ -127,7 +127,7 @@ export default function WorkoutScreen() {
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
           {/* Page header */}
-          <Text style={s.pageLabel}>{isAr ? "المدرب الذكي" : "AI Coach"}</Text>
+          <Text style={s.pageLabel}>{isAr ? "الرياضة" : "Fitness"}</Text>
           <Text style={s.pageTitle}>{isAr ? "تدريبك اليوم" : "Your Training"}</Text>
 
           {loading ? (
@@ -242,6 +242,24 @@ export default function WorkoutScreen() {
                 >
                   <Text style={s.quickEmoji}>🏆</Text>
                   <Text style={s.quickLabelLight}>{isAr ? "الإنجازات" : "Achievements"}</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={[s.quickRow, isAr && { flexDirection: "row-reverse" }]}>
+                <TouchableOpacity
+                  style={s.quickBtnScanner}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/(tabs)/gym-scanner" as any)}
+                >
+                  <Text style={s.quickEmoji}>🔬</Text>
+                  <Text style={s.quickLabelLight}>{isAr ? "ماسح النادي" : "Gym Scanner"}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.quickBtnOutline}
+                  activeOpacity={0.85}
+                  onPress={() => router.push("/(tabs)/ai-coach" as any)}
+                >
+                  <Text style={s.quickEmoji}>🧠</Text>
+                  <Text style={s.quickLabelLight}>{isAr ? "المدرب الذكي" : "Smart Coach"}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -476,6 +494,12 @@ const s = StyleSheet.create({
     justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 20,
     borderWidth: 1.5, borderColor: "rgba(255,255,255,0.15)",
     backgroundColor: "rgba(255,255,255,0.05)",
+  },
+  quickBtnScanner: {
+    flex: 1, flexDirection: "row", alignItems: "center",
+    justifyContent: "center", gap: 8, paddingVertical: 16, borderRadius: 20,
+    borderWidth: 1.5, borderColor: "rgba(198,167,255,0.30)",
+    backgroundColor: "rgba(198,167,255,0.08)",
   },
   quickEmoji: { fontSize: 18 },
   quickLabelDark: { color: "#111", fontSize: 13, fontWeight: "800" },

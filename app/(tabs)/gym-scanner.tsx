@@ -19,7 +19,7 @@ const STRINGS = {
     noHistorySub: "اضغط الزر أعلاه لتصوير جهاز في النادي",
     errorTitle: "حدث خطأ",
     permissionDenied: "يُرجى السماح بالوصول إلى الكاميرا من الإعدادات",
-    apiKeyMissing: "مفتاح API غير موجود. يُرجى إعداد EXPO_PUBLIC_ANTHROPIC_API_KEY",
+    apiKeyMissing: "خدمة الذكاء الاصطناعي غير مُهيّأة. يُرجى التواصل مع الدعم.",
   },
   en: {
     title: "Gym Scanner",
@@ -32,7 +32,7 @@ const STRINGS = {
     noHistorySub: "Tap the button above to scan gym equipment",
     errorTitle: "Error",
     permissionDenied: "Please allow camera access in Settings",
-    apiKeyMissing: "API key missing. Set EXPO_PUBLIC_ANTHROPIC_API_KEY",
+    apiKeyMissing: "AI service is not configured. Please contact support.",
   },
 } as const;
 

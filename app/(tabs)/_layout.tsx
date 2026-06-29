@@ -2,11 +2,10 @@ import { useLanguage } from "@/src/context/LanguageContext";
 import { Tabs } from "expo-router";
 
 import {
-  Brain,
   CalendarDays,
   Dumbbell,
   Home,
-  ScanLine,
+  MoreHorizontal,
   Zap,
 } from "lucide-react-native";
 
@@ -128,7 +127,7 @@ export default function TabLayout() {
           title:
             language === "ar"
               ? "الرياضة"
-              : "Workout",
+              : "Fitness",
 
           tabBarIcon: ({
             color,
@@ -165,18 +164,18 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="ai-coach"
+        name="more"
         options={{
           title:
             language === "ar"
-              ? "المدرب"
-              : "AI Coach",
+              ? "المزيد"
+              : "More",
 
           tabBarIcon: ({
             color,
             size,
           }) => (
-            <Brain
+            <MoreHorizontal
               color={color}
               size={size}
               strokeWidth={2.4}
@@ -185,29 +184,9 @@ export default function TabLayout() {
         }}
       />
 
-      <Tabs.Screen
-        name="gym-scanner"
-        options={{
-          title:
-            language === "ar"
-              ? "التمارين"
-              : "Exercises",
-
-          tabBarIcon: ({
-            color,
-            size,
-          }) => (
-            <ScanLine
-              color={color}
-              size={size}
-              strokeWidth={2.4}
-            />
-          ),
-        }}
-      />
-
-      {/* more tab still exists but is hidden from the bar */}
-      <Tabs.Screen name="more" options={{ href: null }} />
+      {/* ai-coach and gym-scanner are accessible from the Fitness tab — hidden from tab bar */}
+      <Tabs.Screen name="ai-coach" options={{ href: null }} />
+      <Tabs.Screen name="gym-scanner" options={{ href: null }} />
 
       {/* reports is a tab-group screen used via deep link only — hidden from bar */}
       <Tabs.Screen name="reports" options={{ href: null }} />
