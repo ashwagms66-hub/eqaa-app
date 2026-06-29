@@ -2,7 +2,7 @@ import {
   getCurrentPhase,
   getCycleDay,
 } from "@/src/engine/cycleEngine";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, router } from "expo-router";
 
 import {
   generateAnalytics,
@@ -610,6 +610,53 @@ export default function CalendarScreen() {
           </View>
         </View>
 
+        {/* ── Cycle Data card ──────────────────────────────────────── */}
+        {lifeMode !== "pregnancy" && lifeMode !== "postpartum" && (
+          <View style={styles.cycleDataCard}>
+            <View style={[styles.cycleDataHeader, isArabic && { flexDirection: "row-reverse" }]}>
+              <Text style={[styles.cycleDataTitle, isArabic && styles.rtlText]}>
+                {isArabic ? "بيانات دورتك" : "Your Cycle Data"}
+              </Text>
+              <Pressable
+                onPress={() => router.push("/cycle-settings")}
+                style={styles.cycleDataEditBtn}
+              >
+                <Text style={styles.cycleDataEditText}>
+                  {isArabic ? "تعديل البيانات" : "Edit Data"}
+                </Text>
+              </Pressable>
+            </View>
+            <View style={styles.cycleDataRows}>
+              <CycleDataRow
+                label={isArabic ? "آخر دورة" : "Last period"}
+                value={
+                  lastPeriodDate
+                    ? new Date(lastPeriodDate + "T12:00:00").toLocaleDateString(
+                        isArabic ? "ar-SA" : "en-GB",
+                        { day: "numeric", month: "short" }
+                      )
+                    : isArabic ? "غير محدد" : "Not set"
+                }
+                color="#FF6FAE"
+                isAr={isArabic}
+              />
+              <CycleDataRow
+                label={isArabic ? "طول الدورة" : "Cycle length"}
+                value={isArabic ? `${cycleLength} يوم` : `${cycleLength} days`}
+                color="#C6A7FF"
+                isAr={isArabic}
+              />
+              <CycleDataRow
+                label={isArabic ? "مدة الحيض" : "Period length"}
+                value={isArabic ? "5 أيام" : "5 days"}
+                color="#89CFF0"
+                isAr={isArabic}
+                last
+              />
+            </View>
+          </View>
+        )}
+
         <LinearGradient
           colors={["rgba(198,167,255,0.14)", "rgba(255,255,255,0.04)"]}
           style={styles.insightCard}
@@ -815,6 +862,33 @@ export default function CalendarScreen() {
         </Modal>
       </ScrollView>
     </LinearGradient>
+  );
+}
+
+// ── CycleDataRow helper ────────────────────────────────────────────────────────
+
+function CycleDataRow({
+  label,
+  value,
+  color,
+  isAr,
+  last = false,
+}: {
+  label: string;
+  value: string;
+  color: string;
+  isAr: boolean;
+  last?: boolean;
+}) {
+  return (
+    <>
+      <View style={[styles.cycleDataRow, isAr && { flexDirection: "row-reverse" }]}>
+        <View style={[styles.cycleDataDot, { backgroundColor: color }]} />
+        <Text style={[styles.cycleDataLabel, isAr && styles.rtlText]}>{label}</Text>
+        <Text style={[styles.cycleDataValue, { color }]}>{value}</Text>
+      </View>
+      {!last && <View style={styles.cycleDataDivider} />}
+    </>
   );
 }
 
@@ -1482,5 +1556,84 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 16,
     fontWeight: "800",
+  },
+
+  // ── Cycle Data card ──────────────────────────────────────────────────────────
+  cycleDataCard: {
+    marginTop: 26,
+    marginBottom: 4,
+    backgroundColor: "rgba(255,255,255,0.04)",
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.07)",
+    overflow: "hidden",
+  },
+
+  cycleDataHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingTop: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(255,255,255,0.06)",
+  },
+
+  cycleDataTitle: {
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "900",
+  },
+
+  cycleDataEditBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: "rgba(198,167,255,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.22)",
+  },
+
+  cycleDataEditText: {
+    color: "#C6A7FF",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+
+  cycleDataRows: {
+    paddingHorizontal: 18,
+    paddingVertical: 4,
+  },
+
+  cycleDataRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 13,
+  },
+
+  cycleDataDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    flexShrink: 0,
+  },
+
+  cycleDataLabel: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 14,
+    fontWeight: "600",
+    flex: 1,
+  },
+
+  cycleDataValue: {
+    fontSize: 14,
+    fontWeight: "800",
+  },
+
+  cycleDataDivider: {
+    height: 1,
+    backgroundColor: "rgba(255,255,255,0.05)",
   },
 });
