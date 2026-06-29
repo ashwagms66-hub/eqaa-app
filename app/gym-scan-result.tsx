@@ -134,7 +134,15 @@ export default function GymScanResultScreen() {
         {imageUri ? (
           <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
         ) : (
-          <View style={styles.imagePlaceholder} />
+          <View style={styles.imagePlaceholder}>
+            <Dumbbell color="rgba(198,167,255,0.45)" size={28} strokeWidth={1.5} />
+            <Text style={styles.imagePlaceholderName}>
+              {language === "ar" ? result.machineNameAr : result.machineName}
+            </Text>
+            <Text style={styles.imagePlaceholderType}>
+              {language === "ar" ? typeLabel.ar : typeLabel.en}
+            </Text>
+          </View>
         )}
 
         {/* Machine header */}
@@ -280,6 +288,19 @@ const styles = StyleSheet.create({
     width: "100%",
     height: 120,
     backgroundColor: "rgba(255,255,255,0.04)",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  imagePlaceholderName: {
+    color: "rgba(255,255,255,0.65)",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  imagePlaceholderType: {
+    color: "rgba(255,255,255,0.30)",
+    fontSize: 12,
+    fontWeight: "500",
   },
   machineHeader: {
     paddingHorizontal: 20,

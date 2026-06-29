@@ -14,6 +14,7 @@ import {
 import {
   getCycleLength,
   getLastPeriod,
+  getPeriodLength,
   saveLastPeriod,
 } from "@/src/storage/cycleStorage";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -84,6 +85,7 @@ export default function CalendarScreen() {
 
   const [lastPeriodDate, setLastPeriodDate] = React.useState("2026-05-08");
   const [cycleLength, setCycleLength] = React.useState(28);
+  const [periodLength, setPeriodLength] = React.useState(5);
   const [lifeMode, setLifeMode] = React.useState<
     "regular" | "pcos" | "moon" | "pregnancy" | "postpartum"
   >("regular");
@@ -93,10 +95,12 @@ export default function CalendarScreen() {
   const loadCycle = React.useCallback(async () => {
     const saved = await getLastPeriod();
     const savedLength = await getCycleLength();
+    const savedPeriodLength = await getPeriodLength();
     const savedLifeMode = await AsyncStorage.getItem("@eqaa_life_mode");
 
     if (saved) setLastPeriodDate(saved);
     if (savedLength) setCycleLength(savedLength);
+    if (savedPeriodLength) setPeriodLength(savedPeriodLength);
 
     if (
       savedLifeMode === "regular" ||
@@ -648,7 +652,7 @@ export default function CalendarScreen() {
               />
               <CycleDataRow
                 label={isArabic ? "مدة الحيض" : "Period length"}
-                value={isArabic ? "5 أيام" : "5 days"}
+                value={isArabic ? `${periodLength} أيام` : `${periodLength} days`}
                 color="#89CFF0"
                 isAr={isArabic}
                 last

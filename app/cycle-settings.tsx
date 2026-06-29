@@ -18,8 +18,10 @@ import { useLanguage } from "@/src/context/LanguageContext";
 import {
   getCycleLength,
   getLastPeriod,
+  getPeriodLength,
   saveCycleLength,
   saveLastPeriod,
+  savePeriodLength,
 } from "@/src/storage/cycleStorage";
 
 const S = {
@@ -29,6 +31,7 @@ const S = {
     lastPeriodLabel: "تاريخ آخر دورة",
     selectDate: "اختاري التاريخ",
     cycleLengthLabel: "مدة الدورة (بالأيام)",
+    periodLengthLabel: "مدة الحيض (بالأيام)",
     dayUnit: "يوم",
     done: "تم",
     save: "حفظ",
@@ -42,6 +45,7 @@ const S = {
     lastPeriodLabel: "Last Period Date",
     selectDate: "Select date",
     cycleLengthLabel: "Cycle Length (days)",
+    periodLengthLabel: "Period Length (days)",
     dayUnit: "d",
     done: "Done",
     save: "Save",
@@ -52,6 +56,7 @@ const S = {
 } as const;
 
 const CYCLE_LENGTHS = ["21", "24", "26", "28", "30", "32", "35"];
+const PERIOD_LENGTHS = ["2", "3", "4", "5", "6", "7", "8"];
 
 export default function CycleSettingsScreen() {
   const { language } = useLanguage();
@@ -61,13 +66,15 @@ export default function CycleSettingsScreen() {
 
   const [lastPeriodDate, setLastPeriodDate] = useState("");
   const [cycleLength, setCycleLength] = useState("28");
+  const [periodLength, setPeriodLength] = useState("5");
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   useEffect(() => {
     async function load() {
-      const [lp, cl] = await Promise.all([getLastPeriod(), getCycleLength()]);
+      const [lp, cl, pl] = await Promise.all([getLastPeriod(), getCycleLength(), getPeriodLength()]);
       if (lp) setLastPeriodDate(lp);
       if (cl) setCycleLength(cl.toString());
+      if (pl) setPeriodLength(pl.toString());
     }
     load();
   }, []);
@@ -87,6 +94,7 @@ export default function CycleSettingsScreen() {
   async function handleSave() {
     await Promise.all([
       saveCycleLength(Number(cycleLength)),
+      savePeriodLength(Number(periodLength)),
       lastPeriodDate ? saveLastPeriod(lastPeriodDate) : Promise.resolve(),
     ]);
     Alert.alert(t.savedTitle, t.savedMsg, [
@@ -160,6 +168,28 @@ export default function CycleSettingsScreen() {
                 key={len}
                 activeOpacity={0.85}
                 onPress={() => setCycleLength(len)}
+                style={[s.chip, active && s.chipActive]}
+              >
+                <Text style={[s.chipText, active && s.chipTextActive]}>
+                  {isAr ? `${len} ${t.dayUnit}` : `${len}${t.dayUnit}`}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Period length */}
+        <Text style={[s.fieldLabel, isAr && { textAlign: "right" }, { marginTop: 28 }]}>
+          {t.periodLengthLabel}
+        </Text>
+        <View style={s.chipRow}>
+          {PERIOD_LENGTHS.map((len) => {
+            const active = len === periodLength;
+            return (
+              <TouchableOpacity
+                key={len}
+                activeOpacity={0.85}
+                onPress={() => setPeriodLength(len)}
                 style={[s.chip, active && s.chipActive]}
               >
                 <Text style={[s.chipText, active && s.chipTextActive]}>

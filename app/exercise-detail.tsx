@@ -118,7 +118,7 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
     );
   }
 
-  // Fallback: animated illustration
+  // Fallback: animated muscle info card
   return (
     <View style={ms.container}>
       <LinearGradient
@@ -126,9 +126,20 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
         style={ms.fallbackBg}
       />
       <Animated.View style={[ms.glowRing, { opacity: glowAnim }]} />
-      <Animated.View style={[ms.emojiOrb, { transform: [{ scale: pulseAnim }] }]}>
-        <Text style={ms.bigEmoji}>{exercise.emoji}</Text>
-      </Animated.View>
+      <View style={ms.fallbackContent}>
+        <Animated.Text style={[ms.bigEmoji, { transform: [{ scale: pulseAnim }] }]}>
+          {exercise.emoji}
+        </Animated.Text>
+        {exercise.primaryMuscles.length > 0 && (
+          <View style={ms.muscleTagRow}>
+            {exercise.primaryMuscles.slice(0, 3).map((m) => (
+              <View key={m} style={ms.muscleTag}>
+                <Text style={ms.muscleTagText}>{m}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
       <View style={ms.badge}>
         <Text style={ms.badgeTxt}>{isAr ? "صورة توضيحية" : "Illustration"}</Text>
       </View>
@@ -392,7 +403,31 @@ const ms = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  bigEmoji: { fontSize: 52 },
+  bigEmoji: { fontSize: 44 },
+  fallbackContent: {
+    alignItems: "center",
+    gap: 10,
+  },
+  muscleTagRow: {
+    flexDirection: "row",
+    gap: 6,
+    flexWrap: "wrap",
+    justifyContent: "center",
+  },
+  muscleTag: {
+    backgroundColor: "rgba(198,167,255,0.14)",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.22)",
+  },
+  muscleTagText: {
+    color: "#C6A7FF",
+    fontSize: 11,
+    fontWeight: "700",
+    textTransform: "capitalize",
+  },
   video: { width: "100%", height: "100%" },
   loadingOverlay: {
     backgroundColor: "rgba(5,5,10,0.7)",

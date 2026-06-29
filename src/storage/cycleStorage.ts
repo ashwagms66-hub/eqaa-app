@@ -38,3 +38,14 @@ export async function getCycleLength() {
 
   return value ? Number(value) : 28;
 }
+
+const PERIOD_LENGTH_KEY = "@eqaa_period_length";
+
+export async function savePeriodLength(length: number) {
+  await AsyncStorage.setItem(PERIOD_LENGTH_KEY, length.toString());
+}
+
+export async function getPeriodLength() {
+  const value = await AsyncStorage.getItem(PERIOD_LENGTH_KEY);
+  return value ? Number(value) : 5;
+}

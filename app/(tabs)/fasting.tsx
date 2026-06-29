@@ -765,7 +765,7 @@ export default function FastingScreen() {
                     </Text>
                     {(ing.gramsAr || ing.gramsEn) && (
                       <Text style={styles.ingredientGrams}>
-                        {isArabic ? `— ${ing.gramsAr}` : `— ${ing.gramsEn}`}
+                        {isArabic ? ing.gramsAr : ing.gramsEn}
                       </Text>
                     )}
                   </View>
@@ -812,7 +812,7 @@ export default function FastingScreen() {
                     </Text>
                     {(ing.gramsAr || ing.gramsEn) && (
                       <Text style={styles.ingredientGrams}>
-                        {isArabic ? `— ${ing.gramsAr}` : `— ${ing.gramsEn}`}
+                        {isArabic ? ing.gramsAr : ing.gramsEn}
                       </Text>
                     )}
                   </View>
@@ -1372,9 +1372,14 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   ingredientGrams: {
-    color: "rgba(255,255,255,0.48)",
-    fontSize: 13,
-    fontWeight: "500",
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 12,
+    fontWeight: "600",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+    overflow: "hidden",
   },
   mealDivider: {
     height: 1,
