@@ -39,11 +39,15 @@ export async function runGymScan(
     result = parseVisionResponse(rawResponse);
   } catch (err) {
     const message = err instanceof Error ? err.message : "Analysis failed.";
-    const code = message.includes("API key")
-      ? "api_key_missing"
-      : message.includes("non-JSON")
-        ? "parse_failed"
-        : "analysis_failed";
+    const msgLower = message.toLowerCase();
+    const code =
+      msgLower.includes("api key") ||
+      msgLower.includes("api_key") ||
+      msgLower.includes("not configured")
+        ? "api_key_missing"
+        : message.includes("non-JSON")
+          ? "parse_failed"
+          : "analysis_failed";
     onStatus({ kind: "error", message, code });
     throw err;
   }

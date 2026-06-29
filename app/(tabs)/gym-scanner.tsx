@@ -19,7 +19,8 @@ const STRINGS = {
     noHistorySub: "اضغط الزر أعلاه لتصوير جهاز في النادي",
     errorTitle: "حدث خطأ",
     permissionDenied: "يُرجى السماح بالوصول إلى الكاميرا من الإعدادات",
-    apiKeyMissing: "خدمة الذكاء الاصطناعي غير مُهيّأة. يُرجى التواصل مع الدعم.",
+    apiKeyMissing: "خدمة الذكاء الاصطناعي غير مفعّلة حالياً. يرجى تفعيل إعدادات الماسح أو التواصل مع الدعم.",
+    analysisError: "حدث خطأ أثناء التحليل. يرجى المحاولة مرة أخرى.",
   },
   en: {
     title: "Gym Scanner",
@@ -32,7 +33,8 @@ const STRINGS = {
     noHistorySub: "Tap the button above to scan gym equipment",
     errorTitle: "Error",
     permissionDenied: "Please allow camera access in Settings",
-    apiKeyMissing: "AI service is not configured. Please contact support.",
+    apiKeyMissing: "AI scanner is not enabled yet. Please enable scanner settings or contact support.",
+    analysisError: "An error occurred during analysis. Please try again.",
   },
 } as const;
 
@@ -41,13 +43,11 @@ export default function GymScannerScreen() {
   const t = STRINGS[language];
   const { status, history, startScan } = useGymScanner();
 
-  // Show system alert on actionable errors only
+  // Camera permission requires a system settings change — show an alert with guidance
   useEffect(() => {
     if (status.kind !== "error") return;
     if (status.code === "camera_permission_denied") {
       Alert.alert(t.errorTitle, t.permissionDenied);
-    } else if (status.code === "api_key_missing") {
-      Alert.alert(t.errorTitle, t.apiKeyMissing);
     }
   }, [status, t]);
 
@@ -82,11 +82,13 @@ export default function GymScannerScreen() {
           {statusLabel !== null && (
             <Text style={styles.statusLabel}>{statusLabel}</Text>
           )}
-          {status.kind === "error" &&
-            status.code !== "camera_permission_denied" &&
-            status.code !== "api_key_missing" && (
-              <Text style={styles.errorLabel}>{status.message}</Text>
-            )}
+          {status.kind === "error" && status.code !== "camera_permission_denied" && (
+            <Text style={styles.errorLabel}>
+              {status.code === "api_key_missing"
+                ? t.apiKeyMissing
+                : t.analysisError}
+            </Text>
+          )}
           {status.kind === "idle" && (
             <Text style={styles.scanHint}>{t.scanHint}</Text>
           )}
