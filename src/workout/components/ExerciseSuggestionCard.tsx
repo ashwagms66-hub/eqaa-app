@@ -50,16 +50,29 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
     if (starting) return;
     setStarting(true);
     setStartError(null);
+
+    const errorMsg = isAr
+      ? "تعذر بدء التمرين الآن. حاولي مرة أخرى."
+      : "Could not start workout. Please try again.";
+
+    const timeoutId = setTimeout(() => {
+      setStarting(false);
+      setStartError(errorMsg);
+    }, 10000);
+
     try {
       const session = await scanToWorkoutBridge.createSessionFromScan(
         scanEntryId,
         machineName,
         exercise?.id
       );
+      clearTimeout(timeoutId);
+      setStarting(false); // reset so button works if user navigates back
       router.push({ pathname: "/workout-session", params: { id: session.id } });
     } catch {
+      clearTimeout(timeoutId);
       setStarting(false);
-      setStartError(isAr ? "حدث خطأ. يرجى المحاولة مرة أخرى." : "An error occurred. Please try again.");
+      setStartError(errorMsg);
     }
   };
 

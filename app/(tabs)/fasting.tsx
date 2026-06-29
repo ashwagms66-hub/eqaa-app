@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  Alert,
   Animated,
   Easing,
   ScrollView,
@@ -32,8 +33,9 @@ import {
   getFastingHistory,
 } from "@/src/utils/fastingAnalytics";
 
-const STORAGE_KEY   = "fasting_start_time";
-const TIMER_SIZE    = 240;
+const STORAGE_KEY         = "fasting_start_time";
+const MILESTONES_KEY      = "fasting_milestones";
+const TIMER_SIZE          = 240;
 const ARC_R         = 106;
 const CIRCUMFERENCE = 2 * Math.PI * ARC_R;
 
@@ -234,6 +236,14 @@ export default function FastingScreen() {
   const glowAnim  = useRef(new Animated.Value(0)).current;
   const fadeIn    = useRef(new Animated.Value(0)).current;
 
+  // Ref-based milestone tracking (synchronous, no re-render lag)
+  const milestoneRef = useRef({
+    shown10h:       false,
+    shown15h:       false,
+    shown20h:       false,
+    shownForgotten: false,
+  });
+
   useEffect(() => {
     async function load() {
       const [lastStr, cycleLen, savedMode, savedCals] = await Promise.all([
@@ -268,6 +278,20 @@ export default function FastingScreen() {
         const start = Number(saved);
         setFastingStart(start);
         setElapsed(Math.floor((Date.now() - start) / 1000));
+
+        // Restore which milestones were already shown for this fast
+        const savedMs = await AsyncStorage.getItem(MILESTONES_KEY);
+        if (savedMs) {
+          const ms = JSON.parse(savedMs);
+          if (ms.fastStartTime === start) {
+            milestoneRef.current = {
+              shown10h:       ms.shown10h       ?? false,
+              shown15h:       ms.shown15h       ?? false,
+              shown20h:       ms.shown20h       ?? false,
+              shownForgotten: ms.shownForgotten ?? false,
+            };
+          }
+        }
       }
 
       const hist = await getFastingHistory();
@@ -306,9 +330,77 @@ export default function FastingScreen() {
     }
   }, [isActive]);
 
+  // Persist a triggered milestone so it is not re-shown after app restart
+  const saveMilestone = useCallback((key: keyof typeof milestoneRef.current, startTime: number) => {
+    milestoneRef.current[key] = true;
+    AsyncStorage.setItem(MILESTONES_KEY, JSON.stringify({
+      fastStartTime:  startTime,
+      ...milestoneRef.current,
+    }));
+  }, []);
+
+  // Milestone & forgotten-timer detection (fires at most once per fast per threshold)
+  useEffect(() => {
+    if (!isActive || !fastingStart || elapsed === 0) return;
+
+    const hrs = elapsed / 3600;
+    const ms  = milestoneRef.current;
+
+    if (hrs >= 10 && !ms.shown10h) {
+      saveMilestone("shown10h", fastingStart);
+      Alert.alert(
+        isArabic ? "10 ساعات صيام" : "10 Hours Fasting",
+        isArabic
+          ? "وصلتِ 10 ساعات صيام. هل ما زلتِ صائمة؟"
+          : "You reached 10 hours of fasting. Are you still fasting?",
+        [{ text: isArabic ? "نعم، أكملي" : "Yes, continue" }]
+      );
+    }
+
+    if (hrs >= 15 && !ms.shown15h) {
+      saveMilestone("shown15h", fastingStart);
+      Alert.alert(
+        isArabic ? "أداء رائع" : "Great Progress",
+        isArabic
+          ? "أداء رائع، وصلتِ 15 ساعة. استمري فقط إذا كان مناسبًا لك."
+          : "Great progress, you reached 15 hours. Continue only if it feels right for you.",
+        [{ text: isArabic ? "شكراً" : "Got it" }]
+      );
+    }
+
+    if (hrs >= 20 && !ms.shown20h) {
+      saveMilestone("shown20h", fastingStart);
+      Alert.alert(
+        isArabic ? "20 ساعة صيام" : "20 Hours Fasting",
+        isArabic
+          ? "وصلتِ 20 ساعة. تأكدي أن مدة الصيام مقصودة واهتمي بالترطيب."
+          : "You reached 20 hours. Make sure this fast length is intentional and stay hydrated.",
+        [{ text: isArabic ? "شكراً" : "Got it" }]
+      );
+    }
+
+    // Forgotten timer: elapsed > planned max window + 2 hours
+    const forgottenThresholdSecs = (phase.fastingHoursMax + 2) * 3600;
+    if (elapsed > forgottenThresholdSecs && !ms.shownForgotten) {
+      saveMilestone("shownForgotten", fastingStart);
+      Alert.alert(
+        isArabic ? "هل نسيتِ الإيقاف؟" : "Forgot to Stop?",
+        isArabic
+          ? "يبدو أنكِ تجاوزتِ نافذة الصيام المخططة. هل نسيتِ إيقاف العداد؟"
+          : "It looks like you passed your planned fasting window. Did you forget to stop the timer?",
+        [
+          { text: isArabic ? "ما زلت صائمة" : "Still fasting", style: "cancel" },
+          { text: isArabic ? "إيقاف الصيام" : "End fast", style: "destructive", onPress: handleStop },
+        ]
+      );
+    }
+  }, [elapsed, isActive, fastingStart, isArabic, phase.fastingHoursMax, saveMilestone]);
+
   const handleStart = async () => {
     const now = Date.now();
     await AsyncStorage.setItem(STORAGE_KEY, String(now));
+    milestoneRef.current = { shown10h: false, shown15h: false, shown20h: false, shownForgotten: false };
+    await AsyncStorage.removeItem(MILESTONES_KEY);
     setFastingStart(now);
     setElapsed(0);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);

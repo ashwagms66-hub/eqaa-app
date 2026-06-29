@@ -54,6 +54,7 @@ export default function WorkoutSessionScreen() {
   const [repsInput, setRepsInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [exerciseDetail, setExerciseDetail] = useState<Exercise | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (exercise?.exerciseId && exercise.exerciseId !== "unknown") {
@@ -68,10 +69,25 @@ export default function WorkoutSessionScreen() {
   }, [currentSetNumber]);
 
   const handleFinishSet = async () => {
+    if (submitting) return;
     const reps = parseInt(repsInput, 10);
-    if (isNaN(reps) || reps <= 0) return;
-    const weight = weightInput ? parseFloat(weightInput) : null;
-    await finishSet(reps, weight);
+    if (isNaN(reps) || reps <= 0) {
+      Alert.alert(
+        isAr ? "العدات مطلوبة" : "Reps Required",
+        isAr
+          ? "يرجى إدخال عدد التكرارات أولاً"
+          : "Please enter the number of reps first"
+      );
+      return;
+    }
+    // Allow weight=0 for bodyweight; empty = null
+    const weight = weightInput.trim() !== "" ? parseFloat(weightInput) : null;
+    setSubmitting(true);
+    try {
+      await finishSet(reps, weight);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleFinishWorkout = async () => {
@@ -285,15 +301,19 @@ export default function WorkoutSessionScreen() {
               <TouchableOpacity
                 style={[
                   styles.finishSetBtn,
-                  !repsInput && styles.finishSetBtnDisabled,
+                  (!repsInput || submitting) && styles.finishSetBtnDisabled,
                 ]}
                 onPress={handleFinishSet}
-                disabled={!repsInput}
+                disabled={submitting}
                 activeOpacity={0.8}
               >
-                <Text style={styles.finishSetText}>
-                  {isAr ? "إنهاء الجولة" : "Finish Set"}
-                </Text>
+                {submitting ? (
+                  <ActivityIndicator size="small" color="#08080F" />
+                ) : (
+                  <Text style={styles.finishSetText}>
+                    {isAr ? "إنهاء الجولة" : "Finish Set"}
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
