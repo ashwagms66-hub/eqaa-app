@@ -5,15 +5,17 @@ import { formatSeconds } from "../utils/formatters";
 interface Props {
   seconds: number;
   onSkip: () => void;
+  language: "ar" | "en";
 }
 
-export function RestTimer({ seconds, onSkip }: Props) {
+export function RestTimer({ seconds, onSkip, language }: Props) {
+  const isAr = language === "ar";
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>استراحة</Text>
+      <Text style={styles.label}>{isAr ? "استراحة" : "Rest"}</Text>
       <Text style={styles.countdown}>{formatSeconds(seconds)}</Text>
       <TouchableOpacity style={styles.skipBtn} onPress={onSkip} activeOpacity={0.7}>
-        <Text style={styles.skipText}>تخطى الراحة</Text>
+        <Text style={styles.skipText}>{isAr ? "تخطى الراحة" : "Skip Rest"}</Text>
       </TouchableOpacity>
     </View>
   );

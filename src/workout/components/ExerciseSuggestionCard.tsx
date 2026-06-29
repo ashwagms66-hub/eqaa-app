@@ -17,10 +17,10 @@ import { useLanguage } from "@/src/context/LanguageContext";
 
 const muscleById = new Map(MUSCLES.map((m) => [m.id, m]));
 
-const DIFFICULTY_LABEL: Record<string, { ar: string; color: string }> = {
-  beginner: { ar: "مبتدئ", color: "#4CAF50" },
-  intermediate: { ar: "متوسط", color: "#FF9800" },
-  advanced: { ar: "متقدم", color: "#F44336" },
+const DIFFICULTY_LABEL: Record<string, { ar: string; en: string; color: string }> = {
+  beginner: { ar: "مبتدئ", en: "Beginner", color: "#4CAF50" },
+  intermediate: { ar: "متوسط", en: "Intermediate", color: "#FF9800" },
+  advanced: { ar: "متقدم", en: "Advanced", color: "#F44336" },
 };
 
 interface Props {
@@ -34,6 +34,7 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
 
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const [machine, setMachine] = useState<Machine | null>(null);
   const [exercise, setExercise] = useState<Exercise | null>(null);
 
@@ -48,6 +49,7 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
   const handleStart = async () => {
     if (starting) return;
     setStarting(true);
+    setStartError(null);
     try {
       const session = await scanToWorkoutBridge.createSessionFromScan(
         scanEntryId,
@@ -57,6 +59,7 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
       router.push({ pathname: "/workout-session", params: { id: session.id } });
     } catch {
       setStarting(false);
+      setStartError(isAr ? "حدث خطأ. يرجى المحاولة مرة أخرى." : "An error occurred. Please try again.");
     }
   };
 
@@ -100,13 +103,17 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
       <View style={styles.meta}>
         <View style={[styles.diffBadge, { borderColor: difficultyInfo?.color ?? "#888" }]}>
           <Text style={[styles.diffText, { color: difficultyInfo?.color ?? "#888" }]}>
-            {difficultyInfo?.ar ?? exercise.difficulty}
+            {isAr ? (difficultyInfo?.ar ?? exercise.difficulty) : (difficultyInfo?.en ?? exercise.difficulty)}
           </Text>
         </View>
         <Text style={styles.setsReps}>
-          {exercise.defaultSets} سيت × {exercise.defaultReps} تكرار
+          {isAr
+            ? `${exercise.defaultSets} جولات × ${exercise.defaultReps} تكرار`
+            : `${exercise.defaultSets} sets × ${exercise.defaultReps} reps`}
         </Text>
-        <Text style={styles.rest}>{exercise.defaultRest}ث راحة</Text>
+        <Text style={styles.rest}>
+          {isAr ? `${exercise.defaultRest}ث راحة` : `${exercise.defaultRest}s rest`}
+        </Text>
       </View>
 
       {primaryMuscleNames.length > 0 && (
@@ -129,11 +136,14 @@ export function ExerciseSuggestionCard({ machineName, scanEntryId }: Props) {
           <ActivityIndicator size="small" color="#08080F" />
         ) : (
           <>
-            <Text style={styles.startText}>{isAr ? "ابدأ التمرين" : "Start Workout"}</Text>
+            <Text style={styles.startText}>{isAr ? "ابدئي التمرين" : "Start Workout"}</Text>
             <ChevronLeft size={18} color="#08080F" strokeWidth={2.5} />
           </>
         )}
       </TouchableOpacity>
+      {startError && (
+        <Text style={styles.errorText}>{startError}</Text>
+      )}
     </View>
   );
 }
@@ -241,5 +251,11 @@ const styles = StyleSheet.create({
     color: "#08080F",
     fontSize: 15,
     fontWeight: "700",
+  },
+  errorText: {
+    color: "#FF3B30",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: -4,
   },
 });

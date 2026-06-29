@@ -6,18 +6,24 @@ interface Props {
   setNumber: number;
   reps: number;
   weight: number | null;
+  language: "ar" | "en";
 }
 
-export function WorkoutSetRow({ setNumber, reps, weight }: Props) {
+export function WorkoutSetRow({ setNumber, reps, weight, language }: Props) {
+  const isAr = language === "ar";
   return (
     <View style={styles.row}>
       <View style={styles.badge}>
         <Check size={12} color="#E2D4FF" strokeWidth={2.5} />
       </View>
-      <Text style={styles.setLabel}>سيت {setNumber}</Text>
-      <Text style={styles.repsText}>{reps} تكرار</Text>
+      <Text style={styles.setLabel}>
+        {isAr ? `الجولة ${setNumber}` : `Set ${setNumber}`}
+      </Text>
+      <Text style={styles.repsText}>
+        {isAr ? `${reps} تكرار` : `${reps} reps`}
+      </Text>
       {weight !== null && (
-        <Text style={styles.weightText}>{weight} كغ</Text>
+        <Text style={styles.weightText}>{weight} {isAr ? "كجم" : "kg"}</Text>
       )}
     </View>
   );

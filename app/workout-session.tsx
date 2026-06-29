@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
@@ -74,6 +75,15 @@ export default function WorkoutSessionScreen() {
   };
 
   const handleFinishWorkout = async () => {
+    if (completedSets.length === 0) {
+      Alert.alert(
+        isAr ? "لا توجد جولات" : "No Sets Logged",
+        isAr
+          ? "سجّلي جولة واحدة على الأقل قبل إنهاء التمرين"
+          : "Log at least one set before finishing the workout"
+      );
+      return;
+    }
     await finishWorkout();
   };
 
@@ -96,9 +106,11 @@ export default function WorkoutSessionScreen() {
     return (
       <SafeAreaView style={styles.safe}>
         <View style={styles.centered}>
-          <Text style={styles.errorText}>تعذّر تحميل الجلسة</Text>
+          <Text style={styles.errorText}>
+            {isAr ? "تعذّر تحميل الجلسة" : "Session could not be loaded"}
+          </Text>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-            <Text style={styles.backBtnText}>رجوع</Text>
+            <Text style={styles.backBtnText}>{isAr ? "رجوع" : "Back"}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -134,28 +146,28 @@ export default function WorkoutSessionScreen() {
           <View style={styles.doneIcon}>
             <CheckCircle2 size={64} color="#E2D4FF" strokeWidth={1.5} />
           </View>
-          <Text style={styles.doneTitle}>أحسنت!</Text>
+          <Text style={styles.doneTitle}>{isAr ? "أحسنت!" : "Well done!"}</Text>
           <Text style={styles.doneSubtitle}>{isAr ? "اكتملت الجلسة" : "Session complete"}</Text>
 
           <View style={styles.doneSummary}>
             <View style={styles.doneStat}>
               <Text style={styles.doneStatValue}>{completedSets.length}</Text>
-              <Text style={styles.doneStatLabel}>سيت</Text>
+              <Text style={styles.doneStatLabel}>{isAr ? "جولات" : "Sets"}</Text>
             </View>
             <View style={styles.doneDivider} />
             <View style={styles.doneStat}>
               <Text style={styles.doneStatValue}>{totalReps}</Text>
-              <Text style={styles.doneStatLabel}>تكرار</Text>
+              <Text style={styles.doneStatLabel}>{isAr ? "تكرار" : "Reps"}</Text>
             </View>
             <View style={styles.doneDivider} />
             <View style={styles.doneStat}>
               <Text style={styles.doneStatValue}>{duration}</Text>
-              <Text style={styles.doneStatLabel}>مدة</Text>
+              <Text style={styles.doneStatLabel}>{isAr ? "مدة" : "Duration"}</Text>
             </View>
           </View>
 
           <TouchableOpacity style={styles.doneBtn} onPress={() => router.back()}>
-            <Text style={styles.doneBtnText}>العودة للماسح</Text>
+            <Text style={styles.doneBtnText}>{isAr ? "العودة للماسح" : "Back to Scanner"}</Text>
             <ChevronRight size={18} color="#08080F" strokeWidth={2.5} />
           </TouchableOpacity>
         </ScrollView>
@@ -175,7 +187,13 @@ export default function WorkoutSessionScreen() {
             <X size={20} color="rgba(255,255,255,0.5)" strokeWidth={2} />
           </TouchableOpacity>
           <Text style={styles.setCounter}>
-            سيت {Math.min(currentSetNumber, targetSets)} / {targetSets}
+            {currentSetNumber <= targetSets
+              ? isAr
+                ? `الجولة ${currentSetNumber} / ${targetSets}`
+                : `Set ${currentSetNumber} / ${targetSets}`
+              : isAr
+              ? `الجولة ${currentSetNumber}`
+              : `Set ${currentSetNumber}`}
           </Text>
           <View style={styles.iconWrap}>
             <Dumbbell size={18} color="#E2D4FF" strokeWidth={2} />
@@ -194,10 +212,10 @@ export default function WorkoutSessionScreen() {
               <View style={[styles.diffBadge, { borderColor: diffColor }]}>
                 <Text style={[styles.diffText, { color: diffColor }]}>
                   {exerciseDetail.difficulty === "beginner"
-                    ? "مبتدئ"
+                    ? isAr ? "مبتدئ" : "Beginner"
                     : exerciseDetail.difficulty === "intermediate"
-                    ? "متوسط"
-                    : "متقدم"}
+                    ? isAr ? "متوسط" : "Intermediate"
+                    : isAr ? "متقدم" : "Advanced"}
                 </Text>
               </View>
             )}
@@ -217,17 +235,21 @@ export default function WorkoutSessionScreen() {
           {/* Target info */}
           <View style={styles.targetRow}>
             <Text style={styles.targetText}>
-              {exercise?.targetReps} تكرار · {exercise?.targetRestSeconds}ث راحة
+              {isAr
+                ? `${exercise?.targetReps} تكرار · ${exercise?.targetRestSeconds}ث راحة`
+                : `${exercise?.targetReps} reps · ${exercise?.targetRestSeconds}s rest`}
             </Text>
           </View>
 
           {/* Rest timer or input block */}
           {phase === "resting" && restSecondsLeft !== null ? (
-            <RestTimer seconds={restSecondsLeft} onSkip={skipRest} />
+            <RestTimer seconds={restSecondsLeft} onSkip={skipRest} language={language} />
           ) : (
             <View style={styles.inputBlock}>
               <Text style={styles.inputLabel}>
-                {isAr ? "سيت" : "Set"} {Math.min(currentSetNumber, targetSets)}
+                {currentSetNumber <= targetSets
+                  ? isAr ? `الجولة ${currentSetNumber}` : `Set ${currentSetNumber}`
+                  : isAr ? "إضافة جولة" : "Add Set"}
               </Text>
 
               <View style={styles.inputRow}>
@@ -256,7 +278,7 @@ export default function WorkoutSessionScreen() {
                     returnKeyType="done"
                     textAlign="center"
                   />
-                  <Text style={styles.inputUnit}>كغ</Text>
+                  <Text style={styles.inputUnit}>{isAr ? "كجم" : "kg"}</Text>
                 </View>
               </View>
 
@@ -270,17 +292,30 @@ export default function WorkoutSessionScreen() {
                 activeOpacity={0.8}
               >
                 <Text style={styles.finishSetText}>
-                  {isAr ? "إنهاء السيت" : "Finish Set"}
+                  {isAr ? "إنهاء الجولة" : "Finish Set"}
                 </Text>
               </TouchableOpacity>
             </View>
+          )}
+
+          {/* Add Set button (visible during rest — skip rest and start next set) */}
+          {phase === "resting" && (
+            <TouchableOpacity
+              style={styles.addSetBtn}
+              onPress={skipRest}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.addSetText}>
+                {isAr ? "+ إضافة جولة" : "+ Add Set"}
+              </Text>
+            </TouchableOpacity>
           )}
 
           {/* Completed sets */}
           {completedSets.length > 0 && (
             <View style={styles.setsSection}>
               <Text style={styles.setsSectionTitle}>
-                {isAr ? "السيتات المكتملة" : "Completed Sets"}
+                {isAr ? "الجولات المكتملة" : "Completed Sets"}
               </Text>
               {completedSets.map((s) => (
                 <WorkoutSetRow
@@ -288,6 +323,7 @@ export default function WorkoutSessionScreen() {
                   setNumber={s.setNumber}
                   reps={s.reps}
                   weight={s.weight}
+                  language={language}
                 />
               ))}
             </View>
@@ -478,6 +514,20 @@ const styles = StyleSheet.create({
     textAlign: "right",
     marginBottom: 8,
     letterSpacing: 0.3,
+  },
+  addSetBtn: {
+    backgroundColor: "rgba(226,212,255,0.1)",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "rgba(226,212,255,0.2)",
+    marginBottom: 16,
+  },
+  addSetText: {
+    color: "#E2D4FF",
+    fontSize: 15,
+    fontWeight: "600",
   },
   finishWorkoutBtn: {
     flexDirection: "row-reverse",

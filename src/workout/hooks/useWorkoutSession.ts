@@ -75,16 +75,16 @@ export function useWorkoutSession(sessionId: string): UseWorkoutSessionResult {
       });
 
       setSession(updated);
-      const completedSets = updated.exercises[0]?.sets.length ?? 0;
 
-      if (completedSets >= targetSets) {
-        setPhase("done");
-      } else {
+      // Never auto-complete — user explicitly finishes via finishWorkout()
+      if (exercise.targetRestSeconds > 0) {
         setPhase("resting");
         setRestSecondsLeft(exercise.targetRestSeconds);
+      } else {
+        setPhase("working");
       }
     },
-    [session, exercise, phase, currentSetNumber, targetSets]
+    [session, exercise, phase, currentSetNumber]
   );
 
   const skipRest = useCallback(() => {
