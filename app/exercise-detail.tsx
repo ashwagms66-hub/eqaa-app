@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
-  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +11,10 @@ import { Video, ResizeMode, AVPlaybackStatus } from "expo-av";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useLocalSearchParams, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  Activity, Dumbbell, Flame, Heart, Maximize2, Shield,
+  Star, Sun, Target, Wind, Zap,
+} from "lucide-react-native";
 
 import { useLanguage } from "@/src/context/LanguageContext";
 import {
@@ -20,8 +24,31 @@ import {
   addToExerciseHistory,
 } from "@/src/services/exercise-library";
 import { getPRForExercise } from "@/src/services/pr";
+import { workoutSessionService } from "@/src/workout/services/WorkoutSessionService";
 import type { Exercise } from "@/src/services/exercise-library/types";
 import type { PersonalRecord } from "@/src/services/pr/prService";
+
+type LucideIcon = React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
+
+const CATEGORY_VISUAL: Record<string, {
+  colors: [string, string];
+  Icon: LucideIcon;
+  accentColor: string;
+  labelEn: string;
+  labelAr: string;
+}> = {
+  glutes:    { colors: ["rgba(255,111,174,0.22)", "rgba(198,167,255,0.06)"], Icon: Target,    accentColor: "#FF6FAE", labelEn: "Glutes",     labelAr: "الألية"   },
+  legs:      { colors: ["rgba(255,159,10,0.22)",  "rgba(255,204,2,0.06)"],  Icon: Zap,       accentColor: "#FF9F0A", labelEn: "Legs",       labelAr: "الساقين"  },
+  chest:     { colors: ["rgba(255,59,48,0.22)",   "rgba(255,111,174,0.06)"],Icon: Heart,     accentColor: "#FF453A", labelEn: "Chest",      labelAr: "الصدر"    },
+  back:      { colors: ["rgba(100,210,255,0.22)", "rgba(10,132,255,0.06)"], Icon: Shield,    accentColor: "#64D2FF", labelEn: "Back",       labelAr: "الظهر"    },
+  shoulders: { colors: ["rgba(198,167,255,0.22)", "rgba(226,212,255,0.06)"],Icon: Star,      accentColor: "#C6A7FF", labelEn: "Shoulders",  labelAr: "الكتف"    },
+  arms:      { colors: ["rgba(48,209,88,0.22)",   "rgba(52,199,89,0.06)"],  Icon: Dumbbell,  accentColor: "#30D158", labelEn: "Arms",       labelAr: "الذراعين" },
+  core:      { colors: ["rgba(255,159,10,0.22)",  "rgba(255,69,58,0.06)"],  Icon: Flame,     accentColor: "#FF9F0A", labelEn: "Core",       labelAr: "الجوهر"   },
+  cardio:    { colors: ["rgba(255,55,95,0.22)",   "rgba(255,59,48,0.06)"],  Icon: Activity,  accentColor: "#FF375F", labelEn: "Cardio",     labelAr: "كارديو"   },
+  mobility:  { colors: ["rgba(100,210,255,0.22)", "rgba(90,200,250,0.06)"], Icon: Wind,      accentColor: "#64D2FF", labelEn: "Mobility",   labelAr: "المرونة"  },
+  recovery:  { colors: ["rgba(48,209,88,0.22)",   "rgba(52,199,89,0.06)"],  Icon: Sun,       accentColor: "#30D158", labelEn: "Recovery",   labelAr: "التعافي"  },
+  stretching:{ colors: ["rgba(198,167,255,0.22)", "rgba(226,212,255,0.06)"],Icon: Maximize2, accentColor: "#C6A7FF", labelEn: "Stretching", labelAr: "التمدد"   },
+};
 
 const DIFF_COLOR: Record<string, string> = {
   beginner:     "#22C55E",
@@ -118,30 +145,38 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
     );
   }
 
-  // Fallback: animated muscle info card
+  // Fallback: category-themed instructional visual
+  const visual = CATEGORY_VISUAL[exercise.category];
+  const accent = visual?.accentColor ?? "#C6A7FF";
+  const gradColors: [string, string, string] = [
+    visual?.colors[0] ?? "rgba(198,167,255,0.15)",
+    visual?.colors[1] ?? "rgba(198,167,255,0.04)",
+    "rgba(0,0,0,0)",
+  ];
+  const Icon = visual?.Icon ?? Dumbbell;
+  const catLabel = isAr ? (visual?.labelAr ?? exercise.category) : (visual?.labelEn ?? exercise.category);
+
   return (
     <View style={ms.container}>
-      <LinearGradient
-        colors={["rgba(198,167,255,0.06)", "rgba(198,167,255,0.02)", "rgba(0,0,0,0)"]}
-        style={ms.fallbackBg}
-      />
-      <Animated.View style={[ms.glowRing, { opacity: glowAnim }]} />
+      <LinearGradient colors={gradColors} style={ms.fallbackBg} />
+      <Animated.View style={[ms.glowRing, { opacity: glowAnim, borderColor: accent + "20" }]} />
       <View style={ms.fallbackContent}>
-        <Animated.Text style={[ms.bigEmoji, { transform: [{ scale: pulseAnim }] }]}>
-          {exercise.emoji}
-        </Animated.Text>
+        <Animated.View style={[ms.iconCircle, { transform: [{ scale: pulseAnim }], borderColor: accent + "50", backgroundColor: accent + "18" }]}>
+          <Icon size={40} color={accent} strokeWidth={1.5} />
+        </Animated.View>
+        <Text style={[ms.categoryLabel, { color: accent }]}>{catLabel}</Text>
         {exercise.primaryMuscles.length > 0 && (
           <View style={ms.muscleTagRow}>
             {exercise.primaryMuscles.slice(0, 3).map((m) => (
-              <View key={m} style={ms.muscleTag}>
-                <Text style={ms.muscleTagText}>{m}</Text>
+              <View key={m} style={[ms.muscleTag, { borderColor: accent + "35", backgroundColor: accent + "14" }]}>
+                <Text style={[ms.muscleTagText, { color: accent }]}>{m}</Text>
               </View>
             ))}
           </View>
         )}
       </View>
       <View style={ms.badge}>
-        <Text style={ms.badgeTxt}>{isAr ? "صورة توضيحية" : "Illustration"}</Text>
+        <Text style={ms.badgeTxt}>{isAr ? "تركيز التمرين" : "Exercise Focus"}</Text>
       </View>
     </View>
   );
@@ -157,6 +192,7 @@ export default function ExerciseDetailScreen() {
   const [exercise, setExercise] = useState<Exercise | null>(null);
   const [isFav, setIsFav] = useState(false);
   const [pr, setPr] = useState<PersonalRecord | null>(null);
+  const [logging, setLogging] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
@@ -176,6 +212,24 @@ export default function ExerciseDetailScreen() {
     if (!id) return;
     const nowFav = await toggleFavoriteExercise(id);
     setIsFav(nowFav);
+  }
+
+  async function handleLog() {
+    if (logging || !exercise || !id) return;
+    setLogging(true);
+    try {
+      const session = await workoutSessionService.createSession({
+        exerciseId: id,
+        machineId: null,
+        targetSets: exercise.defaultSets || 3,
+        targetReps: String(exercise.defaultReps || 10),
+        targetRestSeconds: 90,
+        scanEntryId: null,
+      });
+      router.push({ pathname: "/workout-session", params: { id: session.id } });
+    } catch {
+      setLogging(false);
+    }
   }
 
   if (!exercise) {
@@ -338,13 +392,18 @@ export default function ExerciseDetailScreen() {
 
           {/* ── Log CTA ── */}
           <TouchableOpacity
-            style={s.logBtn}
+            style={[s.logBtn, logging && s.logBtnDisabled]}
             activeOpacity={0.85}
-            onPress={() => router.push("/workout-log" as any)}
+            onPress={handleLog}
+            disabled={logging}
           >
-            <Text style={s.logBtnTxt}>
-              {isAr ? "🏋️‍♀️ سجّلي هذا التمرين" : "🏋️‍♀️ Log This Exercise"}
-            </Text>
+            {logging ? (
+              <ActivityIndicator color="#111111" />
+            ) : (
+              <Text style={s.logBtnTxt}>
+                {isAr ? "سجّلي هذا التمرين" : "Log This Exercise"}
+              </Text>
+            )}
           </TouchableOpacity>
         </Animated.ScrollView>
       </SafeAreaView>
@@ -407,6 +466,22 @@ const ms = StyleSheet.create({
   fallbackContent: {
     alignItems: "center",
     gap: 10,
+    paddingHorizontal: 16,
+  },
+  iconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  categoryLabel: {
+    fontSize: 16,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+    textTransform: "capitalize",
+    marginTop: 2,
   },
   muscleTagRow: {
     flexDirection: "row",
@@ -415,15 +490,12 @@ const ms = StyleSheet.create({
     justifyContent: "center",
   },
   muscleTag: {
-    backgroundColor: "rgba(198,167,255,0.14)",
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderWidth: 1,
-    borderColor: "rgba(198,167,255,0.22)",
   },
   muscleTagText: {
-    color: "#C6A7FF",
     fontSize: 11,
     fontWeight: "700",
     textTransform: "capitalize",
@@ -556,5 +628,6 @@ const s = StyleSheet.create({
     paddingVertical: 18, borderRadius: 20,
     backgroundColor: "#C6A7FF", alignItems: "center", marginTop: 8,
   },
+  logBtnDisabled: { opacity: 0.6 },
   logBtnTxt: { color: "#111", fontSize: 16, fontWeight: "900" },
 });

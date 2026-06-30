@@ -214,18 +214,19 @@ export default function ExerciseLibraryScreen() {
         )}
 
         {/* Category chips */}
-        <FlatList
+        <ScrollView
           horizontal
-          data={CATEGORIES}
-          keyExtractor={(c) => c.key}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={s.chips}
-          renderItem={({ item: cat }) => {
+        >
+          {CATEGORIES.map((cat) => {
             const active = activeCategory === cat.key;
             return (
               <TouchableOpacity
+                key={cat.key}
                 onPress={() => { setActiveCategory(cat.key); setQuery(""); }}
                 style={[s.chip, active && s.chipActive]}
+                activeOpacity={0.8}
               >
                 <Text style={s.chipEmoji}>{cat.emoji}</Text>
                 <Text style={[s.chipLabel, active && s.chipLabelActive]}>
@@ -233,8 +234,8 @@ export default function ExerciseLibraryScreen() {
                 </Text>
               </TouchableOpacity>
             );
-          }}
-        />
+          })}
+        </ScrollView>
 
         {/* Exercise list */}
         <FlatList
@@ -320,16 +321,17 @@ const s = StyleSheet.create({
   filterChipActive: { backgroundColor: "rgba(198,167,255,0.12)", borderColor: "rgba(198,167,255,0.30)" },
   filterChipTxt: { color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: "700" },
 
-  chips: { paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
+  chips: { paddingHorizontal: 20, paddingTop: 4, paddingBottom: 12, gap: 8 },
   chip: {
     flexDirection: "row", alignItems: "center", gap: 6,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.06)",
     borderWidth: 1, borderColor: "rgba(255,255,255,0.10)",
+    minHeight: 40,
   },
   chipActive: { backgroundColor: "rgba(198,167,255,0.15)", borderColor: "rgba(198,167,255,0.40)" },
-  chipEmoji: { fontSize: 14 },
-  chipLabel: { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: "700" },
+  chipEmoji: { fontSize: 14, lineHeight: 18 },
+  chipLabel: { color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: "700", lineHeight: 18 },
   chipLabelActive: { color: "#C6A7FF" },
 
   listContent: { paddingHorizontal: 20, paddingBottom: 120 },

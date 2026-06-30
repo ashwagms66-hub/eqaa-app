@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, router } from "expo-router";
 import { ChevronRight, CheckCircle2, Dumbbell, X } from "lucide-react-native";
@@ -55,10 +56,15 @@ export default function WorkoutSessionScreen() {
   const [weightInput, setWeightInput] = useState("");
   const [exerciseDetail, setExerciseDetail] = useState<Exercise | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [lastHint, setLastHint] = useState<{ weightKg: number | null; reps: number } | null>(null);
 
   useEffect(() => {
     if (exercise?.exerciseId && exercise.exerciseId !== "unknown") {
       exerciseRepository.getById(exercise.exerciseId).then(setExerciseDetail);
+      AsyncStorage.getItem(`@eqaa_last_set_${exercise.exerciseId}`).then((raw) => {
+        if (!raw) return;
+        try { setLastHint(JSON.parse(raw)); } catch {}
+      });
     }
   }, [exercise?.exerciseId]);
 
@@ -85,6 +91,11 @@ export default function WorkoutSessionScreen() {
     setSubmitting(true);
     try {
       await finishSet(reps, weight);
+      if (exercise?.exerciseId && exercise.exerciseId !== "unknown") {
+        const hint = { weightKg: weight, reps };
+        AsyncStorage.setItem(`@eqaa_last_set_${exercise.exerciseId}`, JSON.stringify(hint));
+        setLastHint(hint);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -297,6 +308,14 @@ export default function WorkoutSessionScreen() {
                   <Text style={styles.inputUnit}>{isAr ? "كجم" : "kg"}</Text>
                 </View>
               </View>
+
+              {lastHint && (
+                <Text style={styles.hintText}>
+                  {isAr
+                    ? `السابق: ${lastHint.weightKg != null ? `${lastHint.weightKg} كجم × ` : ""}${lastHint.reps} عدة`
+                    : `Previous: ${lastHint.weightKg != null ? `${lastHint.weightKg}kg × ` : ""}${lastHint.reps} reps`}
+                </Text>
+              )}
 
               <TouchableOpacity
                 style={[
@@ -518,6 +537,13 @@ const styles = StyleSheet.create({
   },
   finishSetBtnDisabled: {
     opacity: 0.4,
+  },
+  hintText: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 12,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 4,
   },
   finishSetText: {
     color: "#08080F",
