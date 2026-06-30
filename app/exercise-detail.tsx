@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Image,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -30,6 +31,8 @@ import type { PersonalRecord } from "@/src/services/pr/prService";
 
 type LucideIcon = React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 
+// ── Category visual map (used in Muscle Focus section) ─────────────────────────
+
 const CATEGORY_VISUAL: Record<string, {
   colors: [string, string];
   Icon: LucideIcon;
@@ -49,6 +52,20 @@ const CATEGORY_VISUAL: Record<string, {
   recovery:  { colors: ["rgba(48,209,88,0.22)",   "rgba(52,199,89,0.06)"],  Icon: Sun,       accentColor: "#30D158", labelEn: "Recovery",   labelAr: "التعافي"  },
   stretching:{ colors: ["rgba(198,167,255,0.22)", "rgba(226,212,255,0.06)"],Icon: Maximize2, accentColor: "#C6A7FF", labelEn: "Stretching", labelAr: "التمدد"   },
 };
+
+// ── Exercise-specific movement hints for the 7 key exercises ──────────────────
+
+const MOVEMENT_HINTS: Record<string, { ar: string; en: string; motion: string }> = {
+  glute_001: { motion: "⬆️", ar: "ادفعي الوركين للأعلى بقوة",          en: "Drive hips powerfully upward"         },
+  glute_002: { motion: "🌉", ar: "ارفعي الوركين واضغطي الألية",         en: "Bridge hips up, squeeze glutes"       },
+  legs_001:  { motion: "↕️", ar: "انزلي عميقاً ثم ارتفعي بقوة",        en: "Descend deep, then drive back up"    },
+  legs_002:  { motion: "🦵", ar: "اخفضي الجسم والساق الأمامية تحمل",   en: "Lower body, front leg drives weight"  },
+  legs_003:  { motion: "⬆️", ar: "ادفعي المنصة بعيداً بكلتا القدمين",  en: "Press platform away through both feet"},
+  back_001:  { motion: "⬇️", ar: "اسحبي البار نحو صدرك مع الإطباق",    en: "Pull bar to chest with a firm squeeze" },
+  shoulders_001: { motion: "🏋️", ar: "ادفعي الوزن مباشرة فوق رأسك",  en: "Press weight directly overhead"       },
+};
+
+// ── Diff / phase / equip maps ──────────────────────────────────────────────────
 
 const DIFF_COLOR: Record<string, string> = {
   beginner:     "#22C55E",
@@ -77,32 +94,57 @@ const EQUIP_MAP: Record<string, [string, string]> = {
   none:           ["None", "بدون معدات"],
 };
 
-// ── Animated media / illustration section ──────────────────────────────────────
+// ── Demo placeholder (shown when no video or image is available) ───────────────
+
+function ExerciseDemoPlaceholder({ exercise, isAr }: { exercise: Exercise; isAr: boolean }) {
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.08, duration: 2200, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 2200, useNativeDriver: true }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, []);
+
+  const hint = MOVEMENT_HINTS[exercise.id];
+
+  return (
+    <View style={ms.placeholder}>
+      <LinearGradient
+        colors={["rgba(198,167,255,0.10)", "rgba(0,0,0,0)"]}
+        style={StyleSheet.absoluteFill}
+      />
+      <Animated.Text style={[ms.placeholderEmoji, { transform: [{ scale: pulseAnim }] }]}>
+        {exercise.emoji}
+      </Animated.Text>
+      {hint ? (
+        <View style={ms.hintRow}>
+          <Text style={ms.hintMotion}>{hint.motion}</Text>
+          <Text style={[ms.hintText, isAr && { textAlign: "right" }]}>
+            {isAr ? hint.ar : hint.en}
+          </Text>
+        </View>
+      ) : null}
+      <Text style={ms.placeholderLabel}>
+        {isAr ? "صورة التمرين قادمة قريباً" : "Exercise demo coming soon"}
+      </Text>
+      <View style={ms.comingSoonBadge}>
+        <Text style={ms.comingSoonBadgeTxt}>{isAr ? "قريباً" : "COMING SOON"}</Text>
+      </View>
+    </View>
+  );
+}
+
+// ── Main media section ─────────────────────────────────────────────────────────
 
 function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: boolean }) {
   const videoRef = useRef<Video>(null);
   const [playing, setPlaying] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0.4)).current;
-
-  useEffect(() => {
-    const pulse = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.06, duration: 1800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 1800, useNativeDriver: true }),
-      ])
-    );
-    const glow = Animated.loop(
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 0.8, duration: 2200, useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0.4, duration: 2200, useNativeDriver: true }),
-      ])
-    );
-    pulse.start();
-    glow.start();
-    return () => { pulse.stop(); glow.stop(); };
-  }, []);
 
   async function togglePlay() {
     if (!videoRef.current) return;
@@ -114,6 +156,7 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
     setPlaying(!playing);
   }
 
+  // 1. Real video
   if (exercise.videoUrl) {
     return (
       <View style={ms.container}>
@@ -138,47 +181,62 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
             <Text style={ms.playBtnIcon}>{playing ? "⏸" : "▶"}</Text>
           </View>
         </TouchableOpacity>
-        <View style={ms.badge}>
-          <Text style={ms.badgeTxt}>{isAr ? "فيديو تعليمي" : "Tutorial Video"}</Text>
+        <View style={ms.mediaBadge}>
+          <Text style={ms.mediaBadgeTxt}>{isAr ? "فيديو تعليمي" : "Tutorial Video"}</Text>
         </View>
       </View>
     );
   }
 
-  // Fallback: category-themed instructional visual
-  const visual = CATEGORY_VISUAL[exercise.category];
-  const accent = visual?.accentColor ?? "#C6A7FF";
-  const gradColors: [string, string, string] = [
-    visual?.colors[0] ?? "rgba(198,167,255,0.15)",
-    visual?.colors[1] ?? "rgba(198,167,255,0.04)",
-    "rgba(0,0,0,0)",
-  ];
-  const Icon = visual?.Icon ?? Dumbbell;
-  const catLabel = isAr ? (visual?.labelAr ?? exercise.category) : (visual?.labelEn ?? exercise.category);
+  // 2. Static demo image (future-ready — add demoImage to exercise data when available)
+  if (exercise.demoImage != null) {
+    return (
+      <View style={ms.container}>
+        <Image source={exercise.demoImage} style={ms.demoImage} resizeMode="cover" />
+        <View style={ms.mediaBadge}>
+          <Text style={ms.mediaBadgeTxt}>{isAr ? "صورة تعليمية" : "Exercise Demo"}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // 3. Coming-soon placeholder — NOT the muscle focus graphic
+  return <ExerciseDemoPlaceholder exercise={exercise} isAr={isAr} />;
+}
+
+// ── Muscle Focus section (displayed lower on the page as its own section) ──────
+
+function MuscleFocusSection({ exercise, isAr }: { exercise: Exercise; isAr: boolean }) {
+  const catKey = (exercise.muscleFocusType ?? exercise.category) as string;
+  const visual = CATEGORY_VISUAL[catKey];
+  if (!visual) return null;
+
+  const { Icon, accentColor, labelEn, labelAr, colors } = visual;
 
   return (
-    <View style={ms.container}>
-      <LinearGradient colors={gradColors} style={ms.fallbackBg} />
-      <Animated.View style={[ms.glowRing, { opacity: glowAnim, borderColor: accent + "20" }]} />
-      <View style={ms.fallbackContent}>
-        <Animated.View style={[ms.iconCircle, { transform: [{ scale: pulseAnim }], borderColor: accent + "50", backgroundColor: accent + "18" }]}>
-          <Icon size={40} color={accent} strokeWidth={1.5} />
-        </Animated.View>
-        <Text style={[ms.categoryLabel, { color: accent }]}>{catLabel}</Text>
-        {exercise.primaryMuscles.length > 0 && (
-          <View style={ms.muscleTagRow}>
-            {exercise.primaryMuscles.slice(0, 3).map((m) => (
-              <View key={m} style={[ms.muscleTag, { borderColor: accent + "35", backgroundColor: accent + "14" }]}>
-                <Text style={[ms.muscleTagText, { color: accent }]}>{m}</Text>
-              </View>
-            ))}
+    <Section title={isAr ? "تركيز العضلة" : "Muscle Focus"}>
+      <View style={s.muscleFocusCard}>
+        <LinearGradient
+          colors={[colors[0], colors[1], "rgba(0,0,0,0)"]}
+          style={StyleSheet.absoluteFill}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        />
+        <View style={[s.muscleFocusInner, isAr && { flexDirection: "row-reverse" }]}>
+          <View style={[s.muscleFocusIconWrap, { borderColor: accentColor + "55", backgroundColor: accentColor + "18" }]}>
+            <Icon size={28} color={accentColor} strokeWidth={1.8} />
           </View>
-        )}
+          <View style={{ flex: 1 }}>
+            <Text style={[s.muscleFocusName, { color: accentColor }, isAr && { textAlign: "right" }]}>
+              {isAr ? labelAr : labelEn}
+            </Text>
+            <Text style={[s.muscleFocusMuscles, isAr && { textAlign: "right" }]} numberOfLines={2}>
+              {[...exercise.primaryMuscles, ...exercise.secondaryMuscles.slice(0, 2)].join(" · ")}
+            </Text>
+          </View>
+        </View>
       </View>
-      <View style={ms.badge}>
-        <Text style={ms.badgeTxt}>{isAr ? "تركيز التمرين" : "Exercise Focus"}</Text>
-      </View>
-    </View>
+    </Section>
   );
 }
 
@@ -263,10 +321,10 @@ export default function ExerciseDetailScreen() {
           contentContainerStyle={s.scroll}
           showsVerticalScrollIndicator={false}
         >
-          {/* ── Media section ── */}
+          {/* 1. Exercise demo visual */}
           <ExerciseMediaSection exercise={exercise} isAr={isAr} />
 
-          {/* ── Title + badges ── */}
+          {/* 2. Title + badges (sets / reps / difficulty) */}
           <View style={s.titleBlock}>
             <Text style={s.heroName}>{isAr ? exercise.nameAr : exercise.nameEn}</Text>
             <View style={[s.badgeRow, isAr && { flexDirection: "row-reverse" }]}>
@@ -292,7 +350,7 @@ export default function ExerciseDetailScreen() {
             </View>
           </View>
 
-          {/* ── PR banner ── */}
+          {/* PR banner */}
           {pr && (
             <View style={s.prBanner}>
               <Text style={s.prEmoji}>🏆</Text>
@@ -309,14 +367,14 @@ export default function ExerciseDetailScreen() {
             </View>
           )}
 
-          {/* ── Description ── */}
+          {/* 3. Description */}
           <Section title={isAr ? "الوصف" : "Description"}>
             <Text style={[s.bodyText, isAr && { textAlign: "right" }]}>
               {isAr ? exercise.descriptionAr : exercise.descriptionEn}
             </Text>
           </Section>
 
-          {/* ── Muscles ── */}
+          {/* 4. Target muscles */}
           <Section title={isAr ? "العضلات المستهدفة" : "Muscles Targeted"}>
             <View style={s.muscleWrap}>
               <View style={s.muscleLine}>
@@ -332,7 +390,7 @@ export default function ExerciseDetailScreen() {
             </View>
           </Section>
 
-          {/* ── Equipment ── */}
+          {/* 5. Equipment */}
           <Section title={isAr ? "المعدات" : "Equipment"}>
             <View style={[s.equipRow, isAr && { flexDirection: "row-reverse" }]}>
               {exercise.equipment.map((eq) => {
@@ -346,7 +404,7 @@ export default function ExerciseDetailScreen() {
             </View>
           </Section>
 
-          {/* ── Breathing ── */}
+          {/* 6. Breathing */}
           <Section title={isAr ? "التنفس" : "Breathing Technique"}>
             <View style={[s.breathRow, isAr && { flexDirection: "row-reverse" }]}>
               <Text style={s.breathEmoji}>🫁</Text>
@@ -356,7 +414,10 @@ export default function ExerciseDetailScreen() {
             </View>
           </Section>
 
-          {/* ── Cycle phases ── */}
+          {/* 7. Muscle focus graphic — moved here per spec */}
+          <MuscleFocusSection exercise={exercise} isAr={isAr} />
+
+          {/* 8. Best cycle phases */}
           <Section title={isAr ? "أفضل مراحل الدورة" : "Best Cycle Phases"}>
             <View style={[s.phaseRow, isAr && { flexDirection: "row-reverse" }]}>
               {exercise.cyclePhases.map((phase) => {
@@ -370,7 +431,7 @@ export default function ExerciseDetailScreen() {
             </View>
           </Section>
 
-          {/* ── Common mistakes ── */}
+          {/* Common mistakes */}
           <Section title={isAr ? "الأخطاء الشائعة" : "Common Mistakes"}>
             {(isAr ? exercise.commonMistakesAr : exercise.commonMistakesEn).map((m, i) => (
               <View key={i} style={[s.listRow, isAr && { flexDirection: "row-reverse" }]}>
@@ -380,7 +441,7 @@ export default function ExerciseDetailScreen() {
             ))}
           </Section>
 
-          {/* ── Beginner tips ── */}
+          {/* Beginner tips */}
           <Section title={isAr ? "نصائح للمبتدئات" : "Beginner Tips"}>
             {(isAr ? exercise.beginnerTipsAr : exercise.beginnerTipsEn).map((t, i) => (
               <View key={i} style={[s.listRow, isAr && { flexDirection: "row-reverse" }]}>
@@ -390,7 +451,7 @@ export default function ExerciseDetailScreen() {
             ))}
           </Section>
 
-          {/* ── Log CTA ── */}
+          {/* Log CTA */}
           <TouchableOpacity
             style={[s.logBtn, logging && s.logBtnDisabled]}
             activeOpacity={0.85}
@@ -411,6 +472,8 @@ export default function ExerciseDetailScreen() {
   );
 }
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 function arabicCategory(cat: string): string {
   const map: Record<string, string> = {
     glutes: "ألية", legs: "ساقين", chest: "صدر", back: "ظهر",
@@ -429,7 +492,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   );
 }
 
-// ── Styles ────────────────────────────────────────────────────────────────────
+// ── Media styles ──────────────────────────────────────────────────────────────
 
 const ms = StyleSheet.create({
   container: {
@@ -438,68 +501,11 @@ const ms = StyleSheet.create({
     borderRadius: 24,
     overflow: "hidden",
     backgroundColor: "rgba(255,255,255,0.04)",
-    alignItems: "center",
-    justifyContent: "center",
     borderWidth: 1,
     borderColor: "rgba(255,255,255,0.07)",
   },
-  fallbackBg: { ...StyleSheet.absoluteFillObject },
-  glowRing: {
-    position: "absolute",
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    borderWidth: 40,
-    borderColor: "rgba(198,167,255,0.12)",
-  },
-  emojiOrb: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: "rgba(198,167,255,0.08)",
-    borderWidth: 2,
-    borderColor: "rgba(198,167,255,0.20)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  bigEmoji: { fontSize: 44 },
-  fallbackContent: {
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-  },
-  iconCircle: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 2,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  categoryLabel: {
-    fontSize: 16,
-    fontWeight: "800",
-    letterSpacing: 0.5,
-    textTransform: "capitalize",
-    marginTop: 2,
-  },
-  muscleTagRow: {
-    flexDirection: "row",
-    gap: 6,
-    flexWrap: "wrap",
-    justifyContent: "center",
-  },
-  muscleTag: {
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderWidth: 1,
-  },
-  muscleTagText: {
-    fontSize: 11,
-    fontWeight: "700",
-    textTransform: "capitalize",
-  },
+
+  // Video
   video: { width: "100%", height: "100%" },
   loadingOverlay: {
     backgroundColor: "rgba(5,5,10,0.7)",
@@ -507,35 +513,89 @@ const ms = StyleSheet.create({
     justifyContent: "center",
   },
   loadingEmoji: { fontSize: 48 },
-  playBtn: {
-    position: "absolute",
-    bottom: 14,
-    right: 14,
-  },
+  playBtn: { position: "absolute", bottom: 14, right: 14 },
   playBtnInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: "rgba(0,0,0,0.6)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.2)",
+    alignItems: "center", justifyContent: "center",
   },
   playBtnIcon: { color: "#FFFFFF", fontSize: 16, fontWeight: "900" },
-  badge: {
+
+  // Static image (future)
+  demoImage: { width: "100%", height: "100%" },
+
+  // Shared bottom-left badge
+  mediaBadge: {
+    position: "absolute", bottom: 12, left: 12,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 999, backgroundColor: "rgba(0,0,0,0.55)",
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+  },
+  mediaBadgeTxt: { color: "rgba(255,255,255,0.75)", fontSize: 11, fontWeight: "700" },
+
+  // Coming-soon placeholder
+  placeholder: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingHorizontal: 24,
+    borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.22)",
+    borderStyle: "dashed",
+    borderRadius: 24,
+    height: 220,
+    marginBottom: 20,
+    overflow: "hidden",
+    backgroundColor: "rgba(255,255,255,0.025)",
+  },
+
+  placeholderEmoji: { fontSize: 48, marginBottom: 4 },
+
+  hintRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  hintMotion: { fontSize: 16 },
+  hintText: {
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 13,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+    flex: 1,
+  },
+
+  placeholderLabel: {
+    color: "rgba(255,255,255,0.35)",
+    fontSize: 13,
+    fontWeight: "700",
+    textAlign: "center",
+    letterSpacing: 0.3,
+  },
+
+  comingSoonBadge: {
     position: "absolute",
     bottom: 12,
-    left: 12,
+    right: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(198,167,255,0.12)",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: "rgba(198,167,255,0.28)",
   },
-  badgeTxt: { color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: "700" },
+  comingSoonBadgeTxt: {
+    color: "rgba(198,167,255,0.70)",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
 });
+
+// ── Screen styles ─────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   container: { flex: 1 },
@@ -594,10 +654,7 @@ const s = StyleSheet.create({
 
   muscleWrap: { gap: 8 },
   muscleLine: { flexDirection: "row", alignItems: "flex-start", gap: 8, flexWrap: "wrap" },
-  muscleTag: {
-    color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: "700",
-    minWidth: 60,
-  },
+  muscleTag: { color: "rgba(255,255,255,0.4)", fontSize: 12, fontWeight: "700", minWidth: 60 },
   musclePrimary: { color: "#FFFFFF", fontWeight: "800", fontSize: 13, flex: 1 },
   muscleSecondary: { color: "rgba(255,255,255,0.65)", fontWeight: "600", fontSize: 13, flex: 1 },
 
@@ -611,6 +668,37 @@ const s = StyleSheet.create({
 
   breathRow: { flexDirection: "row", alignItems: "flex-start", gap: 10 },
   breathEmoji: { fontSize: 18, flexShrink: 0, marginTop: 2 },
+
+  // Muscle Focus section card
+  muscleFocusCard: {
+    borderRadius: 14,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.06)",
+  },
+  muscleFocusInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+  },
+  muscleFocusIconWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: "center", justifyContent: "center",
+    flexShrink: 0,
+  },
+  muscleFocusName: {
+    fontSize: 17,
+    fontWeight: "900",
+    marginBottom: 3,
+  },
+  muscleFocusMuscles: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 12,
+    fontWeight: "600",
+    lineHeight: 18,
+  },
 
   phaseRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   phasePill: {

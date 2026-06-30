@@ -34,6 +34,9 @@ export interface Exercise {
   beginnerTipsAr: string[];
 
   videoUrl: string;             // placeholder — replace with CDN URL
+  demoImage?: number | null;        // local require() image for exercise demo
+  demoAnimation?: string | null;    // future GIF/Lottie URL
+  muscleFocusType?: string | null;  // override category key for muscle focus section
   isTimeBased: boolean;         // true = duration in seconds, false = reps
   defaultSets: number;
   defaultReps: number;
