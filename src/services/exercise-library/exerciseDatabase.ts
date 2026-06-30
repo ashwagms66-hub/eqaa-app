@@ -22,6 +22,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Start with bodyweight or a light resistance band", "Keep chin tucked"],
     beginnerTipsAr: ["ابدئي بوزن الجسم أو الإيلاستيك الخفيف", "اضغطي ذقنك للأسفل"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/hip-thrust.png") as number,
+    demoHint: "Drive hips powerfully upward against the barbell",
     isTimeBased: false,
     defaultSets: 4,
     defaultReps: 10,
@@ -47,6 +50,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Squeeze glutes at the top for 2 seconds", "Keep feet hip-width apart"],
     beginnerTipsAr: ["اضغطي الألية لمدة ثانيتين في الأعلى", "ضعي قدميك بعرض الوركين"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/glute-bridge.png") as number,
+    demoHint: "Bridge hips up from the floor, squeeze glutes at the top",
     isTimeBased: false,
     defaultSets: 3,
     defaultReps: 15,
@@ -149,6 +155,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Squat to a box to learn depth", "Push the floor away with your heels"],
     beginnerTipsAr: ["اقرفصي فوق كرسي لتتعلمي العمق", "ادفعي الأرض بعيداً بكعبيك"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/squat.png") as number,
+    demoHint: "Descend deep, then drive through heels to stand",
     isTimeBased: false,
     defaultSets: 4,
     defaultReps: 8,
@@ -174,6 +183,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Start with bodyweight before adding load", "Keep torso upright"],
     beginnerTipsAr: ["ابدئي بوزن الجسم قبل إضافة الحمل", "اجعلي جذعك مستقيماً"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/bulgarian-split-squat.png") as number,
+    demoHint: "Lower body with front leg bearing the weight",
     isTimeBased: false,
     defaultSets: 3,
     defaultReps: 10,
@@ -199,6 +211,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Never lock out the knees", "Place feet shoulder-width for balance"],
     beginnerTipsAr: ["لا تثبتي الركبتين أبداً", "ضعي القدمين بعرض الكتفين للتوازن"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/leg-press.png") as number,
+    demoHint: "Press platform away through both feet",
     isTimeBased: false,
     defaultSets: 3,
     defaultReps: 12,
@@ -378,6 +393,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Pull to the upper chest, not behind the head", "Initiate with shoulder blades first"],
     beginnerTipsAr: ["اسحبي إلى الصدر العلوي وليس خلف الرأس", "ابدئي بلوحي الكتف أولاً"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/lat-pulldown.png") as number,
+    demoHint: "Pull bar to chest with a firm squeeze at the bottom",
     isTimeBased: false,
     defaultSets: 4,
     defaultReps: 10,
@@ -480,6 +498,9 @@ export const EXERCISE_DATABASE: Exercise[] = [
     beginnerTipsEn: ["Neutral spine, no rib flare", "Use a slight incline in the early weeks"],
     beginnerTipsAr: ["عمود فقري محايد، بدون فتح الأضلاع", "استخدمي إمالة طفيفة في الأسابيع الأولى"],
     videoUrl: "",
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    demoImage: require("../../../assets/images/exercises/shoulder-press.png") as number,
+    demoHint: "Press dumbbells directly overhead, keep core tight",
     isTimeBased: false,
     defaultSets: 3,
     defaultReps: 10,
