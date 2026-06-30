@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ashwaq.eqaa",
-      "buildNumber": "45",
+      "buildNumber": "48",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSHealthShareUsageDescription": "Eqa'a reads your health data to generate your daily wellness score and personalized insights.",
