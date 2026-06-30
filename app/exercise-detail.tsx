@@ -28,6 +28,7 @@ import { getPRForExercise } from "@/src/services/pr";
 import { workoutSessionService } from "@/src/workout/services/WorkoutSessionService";
 import type { Exercise } from "@/src/services/exercise-library/types";
 import type { PersonalRecord } from "@/src/services/pr/prService";
+import { EXERCISE_SVG_MAP } from "@/src/components/exercises/ExerciseDemoSVG";
 
 type LucideIcon = React.ComponentType<{ size: number; color: string; strokeWidth: number }>;
 
@@ -200,7 +201,20 @@ function ExerciseMediaSection({ exercise, isAr }: { exercise: Exercise; isAr: bo
     );
   }
 
-  // 3. Coming-soon placeholder — NOT the muscle focus graphic
+  // 3. SVG movement diagram — per-exercise vector illustration
+  const DemoSVG = EXERCISE_SVG_MAP[exercise.id];
+  if (DemoSVG) {
+    return (
+      <View style={ms.container}>
+        <DemoSVG />
+        <View style={ms.mediaBadge}>
+          <Text style={ms.mediaBadgeTxt}>{isAr ? "رسم الحركة" : "Movement Diagram"}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // 4. Coming-soon placeholder — NOT the muscle focus graphic
   return <ExerciseDemoPlaceholder exercise={exercise} isAr={isAr} />;
 }
 
