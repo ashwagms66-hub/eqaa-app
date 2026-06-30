@@ -14,6 +14,7 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronRight,
+  Dumbbell,
   Globe,
   Heart,
   Info,
@@ -44,6 +45,8 @@ const S = {
     nutritionSub: "السعرات، الهدف، النشاط",
     cycle: "بيانات الدورة",
     cycleSub: "مدة الدورة، آخر دورة",
+    workoutSchedule: "جدول التمرين",
+    workoutScheduleSub: "خططي أسبوعك",
     language: "اللغة",
     languageSub: "العربية / English",
     health: "الصحة",
@@ -93,6 +96,8 @@ const S = {
     nutritionSub: "Calories, goal, activity",
     cycle: "Cycle Data",
     cycleSub: "Cycle length, last period",
+    workoutSchedule: "Workout Schedule",
+    workoutScheduleSub: "Plan your week",
     language: "Language",
     languageSub: "العربية / English",
     health: "Health",
@@ -267,6 +272,14 @@ export default function MoreScreen() {
             title={t.cycle}
             subtitle={cycleSummary || t.cycleSub}
             onPress={() => router.push("/cycle-settings" as any)}
+            isAr={isAr}
+          />
+          <Divider />
+          <SettingsRow
+            icon={<Dumbbell color="#C6A7FF" size={18} strokeWidth={2.2} />}
+            title={t.workoutSchedule}
+            subtitle={t.workoutScheduleSub}
+            onPress={() => router.push("/workout-schedule" as any)}
             isAr={isAr}
           />
           <Divider />

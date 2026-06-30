@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   ScrollView,
   StyleSheet,
   Text,
@@ -31,6 +32,12 @@ import type { ReadinessOutput } from "@/src/services/coach/readinessService";
 import type { WorkoutStats } from "@/src/services/workouts/statsService";
 import type { MuscleStatus } from "@/src/services/workouts/muscleTracker";
 import type { Achievement } from "@/src/services/achievements";
+import {
+  getWorkoutSchedule,
+  getTodayWorkoutFromSchedule,
+  WORKOUT_TYPE_META,
+  type WorkoutScheduleDay,
+} from "@/src/storage/workoutScheduleStorage";
 
 // ── helpers ────────────────────────────────────────────────────────────────────
 
@@ -64,6 +71,7 @@ export default function WorkoutScreen() {
   const [stats, setStats] = useState<WorkoutStats | null>(null);
   const [muscles, setMuscles] = useState<MuscleStatus[]>([]);
   const [recentAchievements, setRecentAchievements] = useState<Achievement[]>([]);
+  const [scheduledToday, setScheduledToday] = useState<WorkoutScheduleDay | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -92,13 +100,14 @@ export default function WorkoutScreen() {
         const weekPlan = generateWeeklyPlan(phase.key);
         const today = getTodaysPlan(weekPlan);
 
-        const [recent, allPRs, aiInsights, workoutStats, muscleMap, allAch] = await Promise.all([
+        const [recent, allPRs, aiInsights, workoutStats, muscleMap, allAch, savedSchedule] = await Promise.all([
           getRecentWorkoutSessions(3),
           getAllPRs(),
           getFitnessInsights(),
           getWorkoutStats(),
           getWeeklyMuscleMap(),
           getAllAchievements(),
+          getWorkoutSchedule(),
         ]);
 
         if (!cancelled) {
@@ -110,6 +119,7 @@ export default function WorkoutScreen() {
           setStats(workoutStats);
           setMuscles(muscleMap);
           setRecentAchievements(allAch.filter((a) => a.unlockedAt !== null).slice(-3).reverse());
+          setScheduledToday(savedSchedule ? getTodayWorkoutFromSchedule(savedSchedule) : null);
           setLoading(false);
         }
       }
@@ -120,6 +130,26 @@ export default function WorkoutScreen() {
 
   const phase = useMemo(() => getCurrentPhase(cycleDay), [cycleDay]);
   const theme = useMemo(() => getPhaseTheme(cycleDay), [cycleDay]);
+
+  function handleStartScheduledWorkout() {
+    if (!scheduledToday || scheduledToday.type === "rest") {
+      Alert.alert(
+        isAr ? "يوم راحة" : "Rest Day",
+        isAr
+          ? "اليوم يوم راحة. خذي وقتك للاستشفاء 🌿"
+          : "Today is a rest day. Give your body time to recover 🌿",
+        [{ text: isAr ? "حسناً" : "OK" }]
+      );
+      return;
+    }
+    router.push({
+      pathname: "/exercise-library",
+      params: {
+        scheduleType: scheduledToday.type,
+        customLabel: scheduledToday.customLabel ?? "",
+      },
+    } as any);
+  }
 
   return (
     <LinearGradient colors={["#05050A", "#121225", `${theme.glow}22`]} style={s.container}>
@@ -167,6 +197,75 @@ export default function WorkoutScreen() {
                       </View>
                     </View>
                   </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {/* ── Workout Schedule Card ────────────────────────────────── */}
+              {scheduledToday ? (() => {
+                const meta = WORKOUT_TYPE_META[scheduledToday.type];
+                const typeLabel = isAr ? meta.labelAr : meta.labelEn;
+                const displayLabel =
+                  scheduledToday.type === "custom" && scheduledToday.customLabel
+                    ? scheduledToday.customLabel
+                    : typeLabel;
+                const isRest = scheduledToday.type === "rest";
+                return (
+                  <View style={[s.scheduleCard, { borderColor: `${meta.accent}40` }]}>
+                    <LinearGradient
+                      colors={[`${meta.accent}14`, "rgba(0,0,0,0)"]}
+                      style={s.scheduleGrad}
+                    >
+                      <View style={[s.scheduleHeader, isAr && { flexDirection: "row-reverse" }]}>
+                        <Text style={s.scheduleHeaderLabel}>{isAr ? "جدول التمرين" : "WORKOUT SCHEDULE"}</Text>
+                        <TouchableOpacity onPress={() => router.push("/workout-schedule" as any)} activeOpacity={0.8}>
+                          <Text style={s.scheduleEditLink}>{isAr ? "تعديل الجدول" : "Edit Schedule"}</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={[s.scheduleBody, isAr && { flexDirection: "row-reverse" }]}>
+                        <View style={[s.scheduleOrbWrap, { backgroundColor: `${meta.accent}22` }]}>
+                          <Text style={s.scheduleEmoji}>{meta.emoji}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.scheduleTodaySmall, isAr && { textAlign: "right" }]}>
+                            {isAr ? "تمرين اليوم" : "Today's workout"}
+                          </Text>
+                          <Text style={[s.scheduleTodayLabel, { color: isRest ? "rgba(255,255,255,0.55)" : meta.accent }, isAr && { textAlign: "right" }]}>
+                            {isRest ? (isAr ? "يوم راحة" : "Rest Day") : displayLabel}
+                          </Text>
+                        </View>
+                      </View>
+                      {!isRest && (
+                        <TouchableOpacity
+                          style={[s.scheduleStartBtn, { backgroundColor: meta.accent }]}
+                          onPress={handleStartScheduledWorkout}
+                          activeOpacity={0.85}
+                        >
+                          <Text style={s.scheduleStartBtnText}>
+                            {isAr ? "ابدئي تمرين اليوم" : "Start Today's Workout"}
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+                    </LinearGradient>
+                  </View>
+                );
+              })() : (
+                <TouchableOpacity
+                  style={s.scheduleEmptyCard}
+                  onPress={() => router.push("/workout-schedule" as any)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.scheduleEmptyEmoji}>📅</Text>
+                  <Text style={[s.scheduleEmptyTitle, isAr && { textAlign: "right" }]}>
+                    {isAr ? "جدول التمرين" : "Workout Schedule"}
+                  </Text>
+                  <Text style={[s.scheduleEmptySub, isAr && { textAlign: "right" }]}>
+                    {isAr
+                      ? "خططي أسبوعك وكرريه تلقائياً"
+                      : "Plan your week and repeat it automatically"}
+                  </Text>
+                  <View style={s.scheduleEmptyBtn}>
+                    <Text style={s.scheduleEmptyBtnText}>{isAr ? "إنشاء الجدول" : "Create Schedule"}</Text>
+                  </View>
                 </TouchableOpacity>
               )}
 
@@ -586,6 +685,63 @@ const s = StyleSheet.create({
 
   viewAllBtn: { paddingVertical: 12, alignItems: "center" },
   viewAllTxt: { color: "#C6A7FF", fontSize: 14, fontWeight: "700" },
+
+  // Schedule Card
+  scheduleCard: {
+    borderRadius: 24, borderWidth: 1, overflow: "hidden", marginBottom: 20,
+  },
+  scheduleGrad: { padding: 18 },
+  scheduleHeader: {
+    flexDirection: "row", alignItems: "center",
+    justifyContent: "space-between", marginBottom: 14,
+  },
+  scheduleHeaderLabel: {
+    color: "#C6A7FF", fontSize: 11, fontWeight: "800", letterSpacing: 0.8,
+  },
+  scheduleEditLink: {
+    color: "rgba(198,167,255,0.70)", fontSize: 13, fontWeight: "700",
+  },
+  scheduleBody: {
+    flexDirection: "row", alignItems: "center", gap: 14, marginBottom: 16,
+  },
+  scheduleOrbWrap: {
+    width: 52, height: 52, borderRadius: 16,
+    alignItems: "center", justifyContent: "center", flexShrink: 0,
+  },
+  scheduleEmoji: { fontSize: 26 },
+  scheduleTodaySmall: {
+    color: "rgba(255,255,255,0.45)", fontSize: 11, fontWeight: "700",
+    marginBottom: 2, letterSpacing: 0.3,
+  },
+  scheduleTodayLabel: { fontSize: 20, fontWeight: "900", letterSpacing: -0.3 },
+  scheduleStartBtn: {
+    borderRadius: 14, paddingVertical: 12, alignItems: "center",
+  },
+  scheduleStartBtnText: { color: "#111", fontSize: 14, fontWeight: "900" },
+
+  // Schedule empty state
+  scheduleEmptyCard: {
+    backgroundColor: "rgba(198,167,255,0.06)",
+    borderRadius: 24, borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.18)",
+    padding: 22, alignItems: "center", marginBottom: 20, gap: 6,
+  },
+  scheduleEmptyEmoji: { fontSize: 32, marginBottom: 4 },
+  scheduleEmptyTitle: {
+    color: "#FFFFFF", fontSize: 18, fontWeight: "900",
+  },
+  scheduleEmptySub: {
+    color: "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: "600",
+    textAlign: "center", lineHeight: 20,
+  },
+  scheduleEmptyBtn: {
+    marginTop: 10, backgroundColor: "rgba(198,167,255,0.18)",
+    borderRadius: 14, paddingHorizontal: 24, paddingVertical: 10,
+    borderWidth: 1, borderColor: "rgba(198,167,255,0.35)",
+  },
+  scheduleEmptyBtnText: {
+    color: "#C6A7FF", fontSize: 14, fontWeight: "800",
+  },
 
   // Empty
   emptyState: { alignItems: "center", paddingTop: 30, gap: 12 },
