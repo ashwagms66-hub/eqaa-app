@@ -8,6 +8,7 @@ import React, {
 
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   ScrollView,
   StyleSheet,
@@ -356,6 +357,22 @@ export default function HomeScreen() {
       inputRange: [0, 1],
       outputRange: [-25, 25],
     });
+
+  function handleHealthConnect() {
+    if (isRTL) {
+      Alert.alert(
+        "ربط Apple Health قادم قريباً",
+        "ستتمكنين قريباً من مزامنة بيانات Apple Health كالخطوات والنوم ومعدل ضربات القلب لتحسين توصيات إيقاع.",
+        [{ text: "حسناً" }]
+      );
+    } else {
+      Alert.alert(
+        "Apple Health Coming Soon",
+        "Apple Health integration is coming soon. You'll be able to sync steps, sleep, and heart rate data to improve your Eqa'a recommendations.",
+        [{ text: "OK" }]
+      );
+    }
+  }
 
   const greeting = useMemo(() => {
     const firstName = userName?.split(" ")[0]?.trim() || "";
@@ -815,10 +832,10 @@ export default function HomeScreen() {
               )}
             </View>
 
-            {permissionStatus !== "granted" && isAvailable ? (
+            {permissionStatus !== "granted" || !isAvailable ? (
               <TouchableOpacity
                 style={styles.healthConnectRow}
-                onPress={requestAndSync}
+                onPress={handleHealthConnect}
                 activeOpacity={0.86}
               >
                 <Text style={styles.healthConnectIcon}>❤️</Text>
@@ -827,7 +844,7 @@ export default function HomeScreen() {
                     {isRTL ? "ربط Apple Health" : "Connect Apple Health"}
                   </Text>
                   <Text style={[styles.healthConnectSub, isRTL && { textAlign: "right" }]}>
-                    {isRTL ? "اضغطي للمتابعة" : "Tap to get started"}
+                    {isRTL ? "غير متصل" : "Not connected"}
                   </Text>
                 </View>
                 <Text style={{ color: "#C6A7FF", fontSize: 16 }}>{isRTL ? "←" : "→"}</Text>
@@ -1129,7 +1146,7 @@ const styles = StyleSheet.create({
 
   scroll: {
     paddingHorizontal: 22,
-    paddingTop: 12,
+    paddingTop: 24,
     paddingBottom: 160,
   },
 
