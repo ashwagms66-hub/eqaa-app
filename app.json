@@ -2,7 +2,7 @@
   "expo": {
     "name": "إيقاع | Eqa'a",
     "slug": "eqaa-app",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "eqaa",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ashwaq.eqaa",
-      "buildNumber": "48",
+      "buildNumber": "49",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSHealthShareUsageDescription": "Eqa'a reads your health data to generate your daily wellness score and personalized insights.",
