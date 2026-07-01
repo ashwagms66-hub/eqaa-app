@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSubscription } from "@/src/hooks/useSubscription";
 import { LinearGradient } from "expo-linear-gradient";
 import { router, useFocusEffect } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -60,6 +61,7 @@ function formatDuration(minutes: number): string {
 export default function WorkoutScreen() {
   const { language } = useLanguage();
   const isAr = language === "ar";
+  const { isPremium } = useSubscription();
 
   const [loading, setLoading] = useState(true);
   const [cycleDay, setCycleDay] = useState(12);
@@ -132,6 +134,10 @@ export default function WorkoutScreen() {
   const theme = useMemo(() => getPhaseTheme(cycleDay), [cycleDay]);
 
   function handleStartScheduledWorkout() {
+    if (!isPremium) {
+      router.push("/paywall" as any);
+      return;
+    }
     if (!scheduledToday || scheduledToday.type === "rest") {
       Alert.alert(
         isAr ? "يوم راحة" : "Rest Day",
@@ -251,7 +257,7 @@ export default function WorkoutScreen() {
               })() : (
                 <TouchableOpacity
                   style={s.scheduleEmptyCard}
-                  onPress={() => router.push("/workout-schedule" as any)}
+                  onPress={() => isPremium ? router.push("/workout-schedule" as any) : router.push("/paywall" as any)}
                   activeOpacity={0.85}
                 >
                   <Text style={s.scheduleEmptyEmoji}>📅</Text>
@@ -363,7 +369,25 @@ export default function WorkoutScreen() {
               </View>
 
               {/* ── Stats row ─────────────────────────────────────────────── */}
-              {stats && (
+              {!isPremium && (
+                <TouchableOpacity
+                  style={s.premiumLock}
+                  onPress={() => router.push("/paywall" as any)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.premiumLockIcon}>👑</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.premiumLockTitle, isAr && { textAlign: "right" }]}>
+                      {isAr ? "إحصاءاتك وسجلك المتقدم" : "Advanced Stats & History"}
+                    </Text>
+                    <Text style={[s.premiumLockSub, isAr && { textAlign: "right" }]}>
+                      {isAr ? "افتحي Premium لرؤية تحليلاتك الكاملة" : "Unlock Premium to see your full analytics"}
+                    </Text>
+                  </View>
+                  <Text style={s.premiumLockArrow}>{isAr ? "←" : "→"}</Text>
+                </TouchableOpacity>
+              )}
+              {isPremium && stats && (
                 <Section title={isAr ? "إحصاءاتك" : "Your Stats"}>
                   <View style={s.statsGrid}>
                     {[
@@ -447,7 +471,7 @@ export default function WorkoutScreen() {
               )}
 
               {/* ── Personal records ─────────────────────────────────────── */}
-              {prs.length > 0 && (
+              {isPremium && prs.length > 0 && (
                 <Section title={isAr ? "أرقامك القياسية" : "Personal Records"}>
                   <View style={s.prGrid}>
                     {prs.map((pr) => (
@@ -467,7 +491,7 @@ export default function WorkoutScreen() {
               )}
 
               {/* ── Recent workouts ──────────────────────────────────────── */}
-              {recentSessions.length > 0 && (
+              {isPremium && recentSessions.length > 0 && (
                 <Section title={isAr ? "التمارين الأخيرة" : "Recent Workouts"}>
                   {recentSessions.map((session) => (
                     <View key={session.id} style={s.sessionCard}>
@@ -545,6 +569,22 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 const s = StyleSheet.create({
   container: { flex: 1 },
   scroll: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 140 },
+
+  premiumLock: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(198,167,255,0.08)",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(198,167,255,0.22)",
+    padding: 16,
+    marginBottom: 20,
+  },
+  premiumLockIcon: { fontSize: 22, flexShrink: 0 },
+  premiumLockTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "800", marginBottom: 3 },
+  premiumLockSub: { color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: "500" },
+  premiumLockArrow: { color: "#C6A7FF", fontSize: 18, flexShrink: 0 },
 
   pageLabel: {
     color: "#C6A7FF", fontSize: 11, fontWeight: "800", textAlign: "center",

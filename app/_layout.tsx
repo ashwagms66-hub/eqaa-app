@@ -1,12 +1,13 @@
-import {
-  LanguageProvider,
-} from "@/src/context/LanguageContext";
-
-import {
-  Stack,
-} from "expo-router";
+import React, { useEffect } from "react";
+import { LanguageProvider } from "@/src/context/LanguageContext";
+import { Stack } from "expo-router";
+import { configurePurchases } from "@/src/services/subscriptionService";
 
 export default function RootLayout() {
+  useEffect(() => {
+    configurePurchases();
+  }, []);
+
   return (
     <LanguageProvider>
       <Stack
@@ -33,6 +34,7 @@ export default function RootLayout() {
         <Stack.Screen name="profile-settings" />
         <Stack.Screen name="nutrition-profile" />
         <Stack.Screen name="cycle-settings" />
+        <Stack.Screen name="paywall" />
       </Stack>
     </LanguageProvider>
   );

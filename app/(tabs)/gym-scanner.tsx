@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
-import { Bookmark, BookmarkCheck, ChevronRight, Play, Trash2 } from "lucide-react-native";
+import { Bookmark, BookmarkCheck, Play, Trash2 } from "lucide-react-native";
 import { useLanguage } from "@/src/context/LanguageContext";
 import { ScanButton } from "@/src/features/workout-ai/components/ScanButton";
 import { ScanResultCard } from "@/src/features/workout-ai/components/ScanResultCard";
@@ -22,6 +22,7 @@ import {
   touchSavedScanSession,
   type SavedScanSession,
 } from "@/src/storage/savedScanSessionStorage";
+import { useSubscription } from "@/src/hooks/useSubscription";
 
 const STRINGS = {
   ar: {
@@ -108,6 +109,7 @@ export default function GymScannerScreen() {
   const isAr = language === "ar";
   const t = STRINGS[language];
   const { status, history, startScan } = useGymScanner();
+  const { isPremium } = useSubscription();
 
   const [savedSessions, setSavedSessions] = useState<SavedScanSession[]>([]);
   const [saveBannerDismissed, setSaveBannerDismissed] = useState(false);
@@ -130,11 +132,15 @@ export default function GymScannerScreen() {
   }, [status, t]);
 
   const handleScan = useCallback(async () => {
+    if (!isPremium) {
+      router.push("/paywall" as any);
+      return;
+    }
     const entry = await startScan();
     if (entry) {
       router.push(`/gym-scan-result?id=${entry.id}`);
     }
-  }, [startScan]);
+  }, [startScan, isPremium]);
 
   const todayScans: ScanEntry[] = history.filter(
     (e) => e.capturedAt.startsWith(todayISO())

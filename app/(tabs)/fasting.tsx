@@ -16,6 +16,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as Haptics from "expo-haptics";
 import { useLanguage } from "@/src/context/LanguageContext";
+import { useSubscription } from "@/src/hooks/useSubscription";
 import { getLastPeriod, getCycleLength } from "@/src/storage/cycleStorage";
 import { getLifeMode, getCalories } from "@/src/storage/profileStorage";
 import {
@@ -200,6 +201,7 @@ const LAST_MEAL: Record<FastingPhaseKey, MealData> = {
 export default function FastingScreen() {
   const { language } = useLanguage();
   const isArabic = language === "ar";
+  const { isPremium } = useSubscription();
 
   const [cycleDay,      setCycleDay]      = useState(1);
   const [phaseKey,      setPhaseKey]      = useState<FastingPhaseKey>("power");
@@ -342,6 +344,7 @@ export default function FastingScreen() {
   // Milestone & forgotten-timer detection (fires at most once per fast per threshold)
   useEffect(() => {
     if (!isActive || !fastingStart || elapsed === 0) return;
+    if (!isPremium) return;
 
     const hrs = elapsed / 3600;
     const ms  = milestoneRef.current;
@@ -394,7 +397,7 @@ export default function FastingScreen() {
         ]
       );
     }
-  }, [elapsed, isActive, fastingStart, isArabic, phase.fastingHoursMax, saveMilestone]);
+  }, [elapsed, isActive, fastingStart, isArabic, phase.fastingHoursMax, saveMilestone, isPremium]);
 
   const handleStart = async () => {
     const now = Date.now();
@@ -764,9 +767,13 @@ export default function FastingScreen() {
                       {isArabic ? ing.nameAr : ing.nameEn}
                     </Text>
                     {(ing.gramsAr || ing.gramsEn) && (
-                      <Text style={styles.ingredientGrams}>
-                        {isArabic ? ing.gramsAr : ing.gramsEn}
-                      </Text>
+                      isPremium ? (
+                        <Text style={styles.ingredientGrams}>
+                          {isArabic ? ing.gramsAr : ing.gramsEn}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.ingredientGrams, { opacity: 0.45 }]}>•••</Text>
+                      )
                     )}
                   </View>
                 ))}
@@ -811,9 +818,13 @@ export default function FastingScreen() {
                       {isArabic ? ing.nameAr : ing.nameEn}
                     </Text>
                     {(ing.gramsAr || ing.gramsEn) && (
-                      <Text style={styles.ingredientGrams}>
-                        {isArabic ? ing.gramsAr : ing.gramsEn}
-                      </Text>
+                      isPremium ? (
+                        <Text style={styles.ingredientGrams}>
+                          {isArabic ? ing.gramsAr : ing.gramsEn}
+                        </Text>
+                      ) : (
+                        <Text style={[styles.ingredientGrams, { opacity: 0.45 }]}>•••</Text>
+                      )
                     )}
                   </View>
                 ))}

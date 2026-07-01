@@ -35,6 +35,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getFastingPhase, FASTING_PHASES } from "@/src/data/fastingData";
 
 import { useHealthData } from "@/src/services/health/useHealthData";
+import { useSubscription } from "@/src/hooks/useSubscription";
 import { formatLastSynced } from "@/src/services/health/healthService";
 import { calculateEqaaScore } from "@/src/services/scoring/scoringService";
 import { getWorkoutRecommendation } from "@/src/services/recommendations/recommendationService";
@@ -134,6 +135,7 @@ export default function HomeScreen() {
 
   const { metrics, syncing, permissionStatus, isAvailable, requestAndSync, sync } =
     useHealthData();
+  const { isPremium } = useSubscription();
 
   const [cycleDay, setCycleDay] = useState(1);
 
@@ -864,7 +866,8 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {/* ── Fitness Recommendation Card ── */}
+          {/* ── Fitness Recommendation Card (premium) ── */}
+          {isPremium ? (
           <TouchableOpacity
             activeOpacity={0.88}
             onPress={() => router.push("/(tabs)/workout" as any)}
@@ -904,6 +907,26 @@ export default function HomeScreen() {
               </Text>
             </LinearGradient>
           </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              activeOpacity={0.88}
+              onPress={() => router.push("/paywall" as any)}
+              style={[styles.recCard, styles.recCardLocked]}
+            >
+              <View style={styles.recLockedInner}>
+                <Text style={styles.recLockedIcon}>👑</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.recLockedTitle, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? "توصيات مخصصة" : "Personalized Recommendations"}
+                  </Text>
+                  <Text style={[styles.recLockedSub, isRTL && { textAlign: "right" }]}>
+                    {isRTL ? "افتحي Premium لرؤية توصيات تمريناتك" : "Unlock Premium for your AI workout plan"}
+                  </Text>
+                </View>
+                <Text style={{ color: "#C6A7FF", fontSize: 16 }}>{isRTL ? "←" : "→"}</Text>
+              </View>
+            </TouchableOpacity>
+          )}
 
           {/* ── Smart Period Card — only when predicted/overdue ── */}
           {periodPredicted && !periodCardDismissed && (
@@ -1755,6 +1778,20 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     borderWidth: 1,
   },
+
+  recCardLocked: {
+    borderColor: "rgba(198,167,255,0.22)",
+    backgroundColor: "rgba(198,167,255,0.06)",
+  },
+  recLockedInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 20,
+  },
+  recLockedIcon: { fontSize: 26, flexShrink: 0 },
+  recLockedTitle: { color: "#FFFFFF", fontSize: 15, fontWeight: "800", marginBottom: 4 },
+  recLockedSub: { color: "rgba(255,255,255,0.45)", fontSize: 13, fontWeight: "500" },
 
   recGrad: {
     padding: 22,

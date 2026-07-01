@@ -14,17 +14,22 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ChevronRight,
+  Crown,
   Dumbbell,
   Globe,
   Heart,
   Info,
   Leaf,
   Moon,
+  RefreshCw,
+  Settings,
   Shield,
   Trash2,
   User,
   Zap,
 } from "lucide-react-native";
+import { Linking } from "react-native";
+import { useSubscription } from "@/src/hooks/useSubscription";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { useHealthData } from "@/src/services/health/useHealthData";
@@ -38,6 +43,20 @@ const S = {
   ar: {
     label: "إيقاع",
     title: "المزيد",
+    premium: "Premium",
+    premiumStatus: "حالة الاشتراك",
+    premiumActive: "نشط ✓",
+    premiumInactive: "غير مفعّل",
+    premiumActiveSub: "اشتراك Premium نشط",
+    premiumInactiveSub: "افتحي الميزات الكاملة",
+    restorePurchases: "استعادة الشراء",
+    restoreSub: "استعادة اشتراك سابق",
+    manageSubscription: "إدارة الاشتراك",
+    manageSub: "App Store — إلغاء أو تجديد",
+    restoringPurchases: "جارٍ الاستعادة...",
+    restoreSuccess: "تم استعادة الشراء بنجاح.",
+    restoreNone: "لم يتم العثور على اشتراك نشط.",
+    restoreError: "تعذر إتمام العملية. حاولي مرة أخرى.",
     account: "الحساب",
     profile: "الملف الشخصي",
     profileSub: "الاسم والتخصيص",
@@ -89,6 +108,20 @@ const S = {
   en: {
     label: "Eqa'a",
     title: "More",
+    premium: "Premium",
+    premiumStatus: "Subscription Status",
+    premiumActive: "Active ✓",
+    premiumInactive: "Not Active",
+    premiumActiveSub: "Premium subscription active",
+    premiumInactiveSub: "Unlock the full experience",
+    restorePurchases: "Restore Purchases",
+    restoreSub: "Restore a previous subscription",
+    manageSubscription: "Manage Subscription",
+    manageSub: "Cancel or renew in App Store",
+    restoringPurchases: "Restoring…",
+    restoreSuccess: "Purchases restored successfully.",
+    restoreNone: "No active subscription found.",
+    restoreError: "Could not complete the action. Please try again.",
     account: "Account",
     profile: "Profile",
     profileSub: "Name & personalization",
@@ -154,6 +187,30 @@ export default function MoreScreen() {
 
   const { permissionStatus, isAvailable, syncing, requestAndSync, sync, metrics } =
     useHealthData();
+
+  const { isPremium, restore, loading: subLoading } = useSubscription();
+  const [restoring, setRestoring] = React.useState(false);
+
+  async function handleRestorePurchases() {
+    if (restoring) return;
+    setRestoring(true);
+    try {
+      const result = await restore();
+      if (result === "restored") {
+        Alert.alert(t.restoreSuccess);
+      } else if (result === "none") {
+        Alert.alert(t.restoreNone);
+      } else {
+        Alert.alert(t.restoreError);
+      }
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  function handleManageSubscription() {
+    Linking.openURL("https://apps.apple.com/account/subscriptions");
+  }
 
   const [profileName, setProfileName] = useState("");
   const [cycleSummary, setCycleSummary] = useState("");
@@ -295,6 +352,40 @@ export default function MoreScreen() {
               </View>
             }
             showChevron={false}
+          />
+        </GroupCard>
+
+        {/* ── Premium ───────────────────────────────────────────────────────── */}
+        <SectionLabel title={t.premium} />
+        <GroupCard>
+          <SettingsRow
+            icon={<Crown color={isPremium ? "#FFD700" : "#C6A7FF"} size={18} strokeWidth={2.2} />}
+            title={t.premiumStatus}
+            subtitle={isPremium ? t.premiumActiveSub : t.premiumInactiveSub}
+            onPress={() => !isPremium && router.push("/paywall" as any)}
+            isAr={isAr}
+            showChevron={!isPremium}
+            accessory={isPremium ? (
+              <View style={s.premiumActiveBadge}>
+                <Text style={s.premiumActiveBadgeTxt}>{t.premiumActive}</Text>
+              </View>
+            ) : undefined}
+          />
+          <Divider />
+          <SettingsRow
+            icon={<RefreshCw color="#89CFF0" size={18} strokeWidth={2.2} />}
+            title={restoring ? t.restoringPurchases : t.restorePurchases}
+            subtitle={t.restoreSub}
+            onPress={handleRestorePurchases}
+            isAr={isAr}
+          />
+          <Divider />
+          <SettingsRow
+            icon={<Settings color="#C6A7FF" size={18} strokeWidth={2.2} />}
+            title={t.manageSubscription}
+            subtitle={t.manageSub}
+            onPress={handleManageSubscription}
+            isAr={isAr}
           />
         </GroupCard>
 
@@ -448,6 +539,20 @@ const s = StyleSheet.create({
 
   scroll: {
     paddingHorizontal: 20,
+  },
+
+  premiumActiveBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: "rgba(255,215,0,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,215,0,0.35)",
+  },
+  premiumActiveBadgeTxt: {
+    color: "#FFD700",
+    fontSize: 11,
+    fontWeight: "800",
   },
 
   pageLabel: {
