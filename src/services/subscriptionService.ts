@@ -84,3 +84,8 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
     return null;
   }
 }
+
+export function openManageSubscription(): void {
+  const { Linking } = require("react-native");
+  Linking.openURL("https://apps.apple.com/account/subscriptions");
+}

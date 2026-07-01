@@ -44,7 +44,7 @@ const S = {
     label: "إيقاع",
     title: "المزيد",
     premium: "Premium",
-    premiumStatus: "حالة الاشتراك",
+    premiumStatus: "حالة Premium",
     premiumActive: "نشط ✓",
     premiumInactive: "غير مفعّل",
     premiumActiveSub: "اشتراك Premium نشط",
@@ -109,7 +109,7 @@ const S = {
     label: "Eqa'a",
     title: "More",
     premium: "Premium",
-    premiumStatus: "Subscription Status",
+    premiumStatus: "Premium Status",
     premiumActive: "Active ✓",
     premiumInactive: "Not Active",
     premiumActiveSub: "Premium subscription active",
@@ -362,9 +362,9 @@ export default function MoreScreen() {
             icon={<Crown color={isPremium ? "#FFD700" : "#C6A7FF"} size={18} strokeWidth={2.2} />}
             title={t.premiumStatus}
             subtitle={isPremium ? t.premiumActiveSub : t.premiumInactiveSub}
-            onPress={() => !isPremium && router.push("/paywall" as any)}
+            onPress={() => router.push("/paywall" as any)}
             isAr={isAr}
-            showChevron={!isPremium}
+            showChevron={true}
             accessory={isPremium ? (
               <View style={s.premiumActiveBadge}>
                 <Text style={s.premiumActiveBadgeTxt}>{t.premiumActive}</Text>
