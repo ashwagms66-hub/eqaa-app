@@ -10,7 +10,7 @@ export default function DisclaimerScreen() {
     if (onboardingDone) {
       router.replace("/splash" as any);
     } else {
-      router.replace("/onboarding/name" as any);
+      router.replace("/onboarding/language" as any);
     }
   };
 

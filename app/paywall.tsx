@@ -41,7 +41,9 @@ const S = {
     restore: "استعادة الشراء",
     cancel: "يمكنك الإلغاء في أي وقت",
     close: "✕",
-    loadingPrices: "جارٍ تحميل الأسعار...",
+    loadingPrices: "جاري تحميل الأسعار...",
+    priceError: "تعذر تحميل الأسعار. حاولي مرة أخرى.",
+    retry: "إعادة المحاولة",
     purchaseSuccess: "تم تفعيل Premium بنجاح.",
     restoreSuccess: "تم استعادة الشراء بنجاح.",
     restoreNone: "لم يتم العثور على اشتراك نشط.",
@@ -73,7 +75,9 @@ const S = {
     restore: "Restore Purchases",
     cancel: "Cancel anytime",
     close: "✕",
-    loadingPrices: "Loading prices…",
+    loadingPrices: "Loading prices...",
+    priceError: "Could not load prices. Please try again.",
+    retry: "Try Again",
     purchaseSuccess: "Premium activated successfully.",
     restoreSuccess: "Purchases restored successfully.",
     restoreNone: "No active subscription found.",
@@ -103,6 +107,7 @@ export default function PaywallScreen() {
     purchaseMonthly,
     purchaseYearly,
     restore,
+    refresh,
   } = useSubscription();
 
   const [selected, setSelected] = useState<"yearly" | "monthly">("yearly");
@@ -147,6 +152,7 @@ export default function PaywallScreen() {
   }
 
   const hasPackages = !!monthlyPackage || !!yearlyPackage;
+  const selectedPackageReady = selected === "yearly" ? !!yearlyPackage : !!monthlyPackage;
 
   return (
     <LinearGradient colors={["#05050A", "#0E0820", "#1A0F35"]} style={s.container}>
@@ -201,73 +207,80 @@ export default function PaywallScreen() {
                   <ActivityIndicator color="#C6A7FF" />
                   <Text style={s.loadingTxt}>{t.loadingPrices}</Text>
                 </View>
+              ) : !monthlyPackage && !yearlyPackage ? (
+                <View style={s.errorRow}>
+                  <Text style={[s.errorTxt, isAr && s.rtlText]}>{t.priceError}</Text>
+                  <TouchableOpacity style={s.retryBtn} activeOpacity={0.8} onPress={refresh}>
+                    <Text style={s.retryTxt}>{t.retry}</Text>
+                  </TouchableOpacity>
+                </View>
               ) : (
                 <View style={s.packages}>
                   {/* Yearly */}
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={[s.pkg, selected === "yearly" && s.pkgSelected]}
-                    onPress={() => setSelected("yearly")}
-                  >
-                    <LinearGradient
-                      colors={selected === "yearly"
-                        ? ["rgba(198,167,255,0.18)", "rgba(198,167,255,0.06)"]
-                        : ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={[s.pkgRow, isAr && s.pkgRowRTL]}>
-                      <View style={[s.radioOuter, selected === "yearly" && s.radioOuterSel]}>
-                        {selected === "yearly" && <View style={s.radioInner} />}
+                  {yearlyPackage && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={[s.pkg, selected === "yearly" && s.pkgSelected]}
+                      onPress={() => setSelected("yearly")}
+                    >
+                      <LinearGradient
+                        colors={selected === "yearly"
+                          ? ["rgba(198,167,255,0.18)", "rgba(198,167,255,0.06)"]
+                          : ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <View style={[s.pkgRow, isAr && s.pkgRowRTL]}>
+                        <View style={[s.radioOuter, selected === "yearly" && s.radioOuterSel]}>
+                          {selected === "yearly" && <View style={s.radioInner} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.pkgLabel, isAr && s.rtlText]}>{t.yearly}</Text>
+                          <Text style={[s.pkgPrice, isAr && s.rtlText]}>
+                            {yearlyPackage.product.priceString} {t.perYear}
+                          </Text>
+                        </View>
+                        <View style={s.bestValueBadge}>
+                          <Text style={s.bestValueTxt}>{t.bestValue}</Text>
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.pkgLabel, isAr && s.rtlText]}>{t.yearly}</Text>
-                        <Text style={[s.pkgPrice, isAr && s.rtlText]}>
-                          {yearlyPackage
-                            ? `${yearlyPackage.product.priceString} ${t.perYear}`
-                            : "—"}
-                        </Text>
-                      </View>
-                      <View style={s.bestValueBadge}>
-                        <Text style={s.bestValueTxt}>{t.bestValue}</Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
 
                   {/* Monthly */}
-                  <TouchableOpacity
-                    activeOpacity={0.85}
-                    style={[s.pkg, selected === "monthly" && s.pkgSelected]}
-                    onPress={() => setSelected("monthly")}
-                  >
-                    <LinearGradient
-                      colors={selected === "monthly"
-                        ? ["rgba(198,167,255,0.18)", "rgba(198,167,255,0.06)"]
-                        : ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]}
-                      style={StyleSheet.absoluteFill}
-                    />
-                    <View style={[s.pkgRow, isAr && s.pkgRowRTL]}>
-                      <View style={[s.radioOuter, selected === "monthly" && s.radioOuterSel]}>
-                        {selected === "monthly" && <View style={s.radioInner} />}
+                  {monthlyPackage && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      style={[s.pkg, selected === "monthly" && s.pkgSelected]}
+                      onPress={() => setSelected("monthly")}
+                    >
+                      <LinearGradient
+                        colors={selected === "monthly"
+                          ? ["rgba(198,167,255,0.18)", "rgba(198,167,255,0.06)"]
+                          : ["rgba(255,255,255,0.04)", "rgba(255,255,255,0.02)"]}
+                        style={StyleSheet.absoluteFill}
+                      />
+                      <View style={[s.pkgRow, isAr && s.pkgRowRTL]}>
+                        <View style={[s.radioOuter, selected === "monthly" && s.radioOuterSel]}>
+                          {selected === "monthly" && <View style={s.radioInner} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.pkgLabel, isAr && s.rtlText]}>{t.monthly}</Text>
+                          <Text style={[s.pkgPrice, isAr && s.rtlText]}>
+                            {monthlyPackage.product.priceString} {t.perMonth}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.pkgLabel, isAr && s.rtlText]}>{t.monthly}</Text>
-                        <Text style={[s.pkgPrice, isAr && s.rtlText]}>
-                          {monthlyPackage
-                            ? `${monthlyPackage.product.priceString} ${t.perMonth}`
-                            : "—"}
-                        </Text>
-                      </View>
-                    </View>
-                  </TouchableOpacity>
+                    </TouchableOpacity>
+                  )}
                 </View>
               )}
 
               {/* CTA */}
               <TouchableOpacity
-                style={[s.cta, (!hasPackages || purchasing) && s.ctaDisabled]}
+                style={[s.cta, (!selectedPackageReady || purchasing) && s.ctaDisabled]}
                 activeOpacity={0.85}
                 onPress={handlePurchase}
-                disabled={!hasPackages || purchasing}
+                disabled={!selectedPackageReady || purchasing}
               >
                 {purchasing
                   ? <ActivityIndicator color="#111" />
@@ -305,7 +318,7 @@ const s = StyleSheet.create({
 
   closeBtn: {
     position: "absolute",
-    top: 56,
+    top: 64,
     right: 20,
     zIndex: 10,
     width: 36,
@@ -319,12 +332,12 @@ const s = StyleSheet.create({
 
   scroll: {
     paddingHorizontal: 24,
-    paddingTop: 60,
-    paddingBottom: 48,
+    paddingTop: 48,
+    paddingBottom: 40,
     alignItems: "center",
   },
 
-  crown: { fontSize: 52, marginBottom: 12 },
+  crown: { fontSize: 44, marginBottom: 10 },
 
   title: {
     color: "#FFFFFF",
@@ -349,14 +362,14 @@ const s = StyleSheet.create({
     fontWeight: "500",
     textAlign: "center",
     lineHeight: 22,
-    marginBottom: 28,
+    marginBottom: 20,
     maxWidth: 320,
   },
 
   featureList: {
     width: "100%",
-    gap: 10,
-    marginBottom: 28,
+    gap: 8,
+    marginBottom: 20,
   },
 
   featureRow: {
@@ -503,6 +516,32 @@ const s = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     fontWeight: "500",
+  },
+
+  errorRow: {
+    width: "100%",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 24,
+    paddingVertical: 8,
+  },
+  errorTxt: {
+    color: "rgba(255,255,255,0.50)",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  retryBtn: {
+    paddingHorizontal: 28,
+    paddingVertical: 12,
+    borderRadius: 999,
+    borderWidth: 1.5,
+    borderColor: "rgba(198,167,255,0.40)",
+  },
+  retryTxt: {
+    color: "#C6A7FF",
+    fontSize: 14,
+    fontWeight: "800",
   },
 
   rtlText: { textAlign: "right" },

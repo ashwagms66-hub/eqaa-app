@@ -66,11 +66,11 @@ export function useSubscription(): UseSubscriptionResult {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      // Fast path: serve from cache
+      // Fast path: update premium state from cache so gates work immediately,
+      // but keep loading=true so the paywall waits for real packages from RC.
       const cached = await readCache();
       if (cached !== null) {
         setIsPremium(cached);
-        setLoading(false);
       }
 
       // Background refresh from RevenueCat

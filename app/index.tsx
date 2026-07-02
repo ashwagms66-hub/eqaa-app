@@ -19,7 +19,7 @@ export default function Index() {
 
       const onboardingDone = await getOnboardingComplete();
       if (!onboardingDone) {
-        router.replace("/onboarding/name" as any);
+        router.replace("/onboarding/language" as any);
         setLoading(false);
         return;
       }
